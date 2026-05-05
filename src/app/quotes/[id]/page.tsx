@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState } from 'react';
+import { useState } from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle, XCircle, Clock } from 'lucide-react';
@@ -39,11 +39,11 @@ const TRANSITION_VARIANTS: Partial<Record<QuoteStatus, 'primary' | 'secondary' |
 };
 
 interface Props {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }
 
 export default function QuoteDetailPage({ params }: Props) {
-  const { id } = use(params);
+  const { id } = params;
   const [, forceUpdate] = useState(0);
 
   const quoteOrUndefined = getQuoteById(id);

@@ -1,4 +1,4 @@
-import { Market, Product, Quote } from '@/lib/types';
+import { Market, Product, ProductVersionSnapshot, Quote } from '@/lib/types';
 
 // ─── Markets ──────────────────────────────────────────────────────────────────
 
@@ -66,6 +66,24 @@ export const SEED_PRODUCTS: Product[] = [
     effectiveFrom: '2024-04-01',
     createdAt: '2024-01-15T09:00:00Z',
     updatedAt: '2024-03-20T14:30:00Z',
+    versionHistory: [
+      {
+        version: 1,
+        pricingStructure: {
+          currency: 'GBP',
+          standingCharge: 59.00,
+          rates: [{ id: 'rate-001-1-v1', label: 'Unit Rate', unitRate: 26.8 }],
+          vatRate: 5,
+          levies: [
+            { name: 'Renewables Obligation', ratePerKwh: 1.96 },
+            { name: 'Feed-in Tariff (FIT)', ratePerKwh: 0.18 },
+          ],
+        },
+        effectiveFrom: '2023-10-01',
+        effectiveTo: '2024-04-01',
+        updatedAt: '2024-03-20T14:30:00Z',
+      } satisfies ProductVersionSnapshot,
+    ],
   },
 
   // 2. Time-of-use electricity — GB
@@ -141,6 +159,7 @@ export const SEED_PRODUCTS: Product[] = [
     effectiveFrom: '2024-06-01',
     createdAt: '2024-05-01T10:00:00Z',
     updatedAt: '2024-05-15T11:00:00Z',
+    versionHistory: [],
   },
 
   // 3. Dynamic / Agile electricity — GB
@@ -208,6 +227,7 @@ export const SEED_PRODUCTS: Product[] = [
     effectiveFrom: '2024-09-01',
     createdAt: '2024-08-01T08:00:00Z',
     updatedAt: '2024-08-20T16:00:00Z',
+    versionHistory: [],
   },
 
   // 4. Export / SEG tariff — GB
@@ -250,6 +270,7 @@ export const SEED_PRODUCTS: Product[] = [
     effectiveFrom: '2024-01-01',
     createdAt: '2023-12-01T09:00:00Z',
     updatedAt: '2024-01-10T10:00:00Z',
+    versionHistory: [],
   },
 
   // 5. Bundled dual fuel — GB
@@ -302,6 +323,7 @@ export const SEED_PRODUCTS: Product[] = [
     effectiveFrom: '2024-04-01',
     createdAt: '2024-03-01T10:00:00Z',
     updatedAt: '2024-03-25T15:00:00Z',
+    versionHistory: [],
   },
 
   // 6. Flat rate electricity — IE market, draft
@@ -338,6 +360,7 @@ export const SEED_PRODUCTS: Product[] = [
     effectiveFrom: '2025-01-01',
     createdAt: '2024-11-01T09:00:00Z',
     updatedAt: '2024-11-15T12:00:00Z',
+    versionHistory: [],
   },
 ];
 

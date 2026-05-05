@@ -75,6 +75,14 @@ export type ProductStatus = 'draft' | 'active' | 'deprecated';
 
 export type FuelType = 'electricity' | 'gas' | 'dual_fuel' | 'ev';
 
+export interface ProductVersionSnapshot {
+  version: number;
+  pricingStructure: PricingStructure;
+  effectiveFrom: string;
+  effectiveTo: string;
+  updatedAt: string;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -91,6 +99,7 @@ export interface Product {
   effectiveTo?: string;
   createdAt: string;
   updatedAt: string;
+  versionHistory: ProductVersionSnapshot[];
 }
 
 // ─── Quote ────────────────────────────────────────────────────────────────────

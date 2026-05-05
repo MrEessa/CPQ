@@ -56,9 +56,11 @@ Full product record including:
 
 - **Pricing structure** — flat rate shows standing charge + unit rate; TOU shows a 24-hour rate band timeline; bundled shows component products and their rates
 - **Eligibility rules** — plain-language conditions (e.g. "Customer type must be residential")
-- **Version history** — version number and effective dates
+- **Version history** — full history of all past pricing versions, expandable per entry showing rates, standing charge, levies, and effective date range
 
 **Status changes:** The dropdown moves a product through `draft → active → deprecated`. Only `active` products show up in the quote builder.
+
+**Editing pricing:** Click **Edit pricing** on any `draft` or `active` product to update standing charge, unit rates, VAT, and levies. On save, the current pricing is archived as a numbered version snapshot and a new version becomes active from the date you specify.
 
 ---
 
