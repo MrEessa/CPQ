@@ -5,7 +5,7 @@ Models how energy products are configured, priced, and quoted across multiple ta
 structures, including time-of-use, dynamic/agile, export, and bundled propositions.
 
 Built as a working proof of concept to demonstrate CPQ domain knowledge for an energy
-SaaS product management context.
+SaaS product management context. 
 
 ---
 
