@@ -1,8 +1,8 @@
 # Energy CPQ — Configure, Price, Quote Demo
 
-A portfolio project demonstrating CPQ (Configure, Price, Quote) domain knowledge for an energy retail context. It models how energy products are configured, priced, and quoted across multiple tariff structures — including flat-rate, time-of-use, dynamic/agile, export, and bundled propositions.
+A working CPQ demo for energy retail. Products are configured with tariff structures (flat-rate, TOU, dynamic/agile, export, bundled), priced through a calculation engine, and quoted through a status-managed workflow.
 
-Built with Next.js 14, TypeScript, and Tailwind CSS. All data is in-memory — no database or backend required.
+Next.js 14, TypeScript, Tailwind. Data is in-memory — no database needed.
 
 ---
 
@@ -13,13 +13,13 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000).
 
 ---
 
 ## Application Overview
 
-The app has four main sections, accessible from the left sidebar:
+Four sections via the left sidebar:
 
 | Section | Path | Purpose |
 |---|---|---|
@@ -34,89 +34,66 @@ The app has four main sections, accessible from the left sidebar:
 
 ### Dashboard
 
-The home screen shows:
-- **Summary cards** — total products by status, quotes this month by status, and estimated pipeline value (sum of all issued quote totals)
-- **Recent quotes table** — the last 5 quotes with status badges and customer details
-- **Quick actions** — buttons to jump directly to "New Quote" or "Add Product"
+Summary cards showing products by status, quotes this month, and pipeline value (issued quote totals). Below that: the last 5 quotes and shortcuts to New Quote and Add Product.
 
 ---
 
 ### Product Catalogue (`/catalogue`)
 
-Lists all energy products with columns for name, type, fuel, status, market, version, and last updated date.
+Lists all products — name, type, fuel, status, market, version, last updated.
 
-**Filtering:** Use the filter bar at the top to narrow by status (draft / active / deprecated), product type, or market.
+**Filtering:** Status, product type, or market via the filter bar.
 
-**Adding a product:**
-1. Click **Add Product** (top right)
-2. Fill in the required fields: name, product type, fuel type, and market(s)
-3. Submit — the product is created in `draft` status and appears in the catalogue
+**Adding a product:** Click **Add Product**. Name, product type, fuel type, market(s) are required. Products start in `draft`.
 
-**Viewing a product:** Click any row to open the product detail page.
+**Viewing a product:** Click any row.
 
 ---
 
 ### Product Detail (`/catalogue/[id]`)
 
-Shows the full product record, including:
+Full product record including:
 
-- **Pricing structure** — displayed visually depending on product type:
-  - *Flat rate*: standing charge + unit rate card
-  - *Time-of-use*: a 24-hour timeline bar showing rate bands (peak, off-peak, night) by time window
-  - *Bundled*: component products listed with their individual rates
-- **Eligibility rules** — rendered as readable conditions (e.g. "Customer type must be residential")
-- **Version history** — version number and effective date range
+- **Pricing structure** — flat rate shows standing charge + unit rate; TOU shows a 24-hour rate band timeline; bundled shows component products and their rates
+- **Eligibility rules** — plain-language conditions (e.g. "Customer type must be residential")
+- **Version history** — version number and effective dates
 
-**Changing status:** Use the status dropdown to move a product through `draft → active → deprecated`. Only `active` products are available for quoting.
+**Status changes:** The dropdown moves a product through `draft → active → deprecated`. Only `active` products show up in the quote builder.
 
 ---
 
 ### Quote List (`/quotes`)
 
-Lists all quotes with reference number, customer, products, annual cost (inc. VAT), status, and validity date.
-
-**Filtering:** Filter by status or customer type using the dropdowns above the table.
-
-**Opening a quote:** Click any row to view the full quote detail.
+All quotes: reference, customer, products, annual cost (inc. VAT), status, expiry. Filter by status or customer type.
 
 ---
 
 ### Quote Builder (`/quotes/new`)
 
-A three-step wizard for creating a new quote:
+Three steps:
 
 **Step 1 — Customer**
-- Enter customer name, customer type (residential / SME / corporate), estimated annual usage in kWh, and market (GB / IE)
-- A helper note shows a typical residential usage benchmark (3,500 kWh/yr)
+Name, type (residential / SME / corporate), estimated annual usage in kWh, and market. There's a benchmark note for residential usage (3,500 kWh/yr).
 
 **Step 2 — Product Selection**
-- Shows all `active` products matching the selected market
-- Eligibility is checked automatically against the customer inputs — ineligible products are greyed out with a tooltip explaining the reason
-- Select one or more products; a live cost estimate updates as you make selections (powered by the pricing engine)
+Active products for the chosen market. Eligibility runs against the customer inputs — ineligible products are greyed out with a reason on hover. Cost estimate updates as you select.
 
 **Step 3 — Review & Issue**
-- Full cost breakdown per product: standing charge, rate lines (kWh × unit rate), levies, subtotal, VAT, and total
-- A notes field and valid-until date (defaults to 30 days from today)
-- **Save as Draft** — saves the quote without issuing it
-- **Issue Quote** — sets status to `issued` and records the status event
+Itemised cost breakdown (standing charge, rate lines, levies, VAT, total), a notes field, and a valid-until date (default 30 days). Save as draft or issue.
 
 ---
 
 ### Quote Detail (`/quotes/[id]`)
 
-Shows the full quote record including:
-
-- **Status badge** with available next-action buttons (e.g. an `issued` quote shows "Mark Accepted" and "Mark Rejected")
-- **Status timeline** — a vertical log of all status transitions with timestamps and optional notes
-- **Pricing breakdown** per line item, mirroring the builder review step
+Full quote record. The status badge shows available transitions as action buttons — an `issued` quote gets "Mark Accepted" and "Mark Rejected". Below: status timeline with timestamps and the per-product pricing breakdown.
 
 ---
 
 ## Seed Data
 
-The app loads with pre-built seed data so you can explore without creating anything from scratch:
+Six products and five quotes load on startup, so there's something to explore immediately.
 
-**Products (6):**
+**Products:**
 
 | ID | Type | Market | Status |
 |---|---|---|---|
@@ -131,14 +108,14 @@ The app loads with pre-built seed data so you can explore without creating anyth
 
 ---
 
-## Tech Stack
+## Stack
 
 - **Next.js 14** (App Router)
 - **TypeScript** (strict mode)
 - **Tailwind CSS**
 - **lucide-react** — icons
 - **recharts** — pricing visualisations
-- In-memory data layer — no database or API needed
+- In-memory data layer — no database
 
 ---
 
@@ -146,17 +123,17 @@ The app loads with pre-built seed data so you can explore without creating anyth
 
 ```
 src/
-  app/               # Next.js pages (dashboard, catalogue, quotes, pricing)
+  app/               # Pages (dashboard, catalogue, quotes, pricing)
   components/
-    ui/              # Shared primitives: Button, Badge, Card, Table, Modal
+    ui/              # Button, Badge, Card, Table, Modal
     layout/          # Sidebar, header shell
     catalogue/       # Product-specific components
     quotes/          # Quote builder components
     pricing/         # Pricing rule components
   lib/
-    types.ts         # All TypeScript interfaces
+    types.ts         # TypeScript interfaces
     pricing-engine.ts
     quote-engine.ts
-    data/            # Seed data + data access (products, quotes, pricing)
+    data/            # Seed data + data access
   hooks/             # useCatalogue, useQuote
 ```
