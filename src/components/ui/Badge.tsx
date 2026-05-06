@@ -1,11 +1,14 @@
 import {
   BillStatus,
   CollectionStage,
+  ComplianceStatus,
   CustomerStatus,
+  MarketMessageStatus,
   PaymentPlanStatus,
   ProductStatus,
   ProductType,
   QuoteStatus,
+  SwitchStage,
   TaskPriority,
 } from '@/lib/types';
 
@@ -18,6 +21,9 @@ type BadgeVariant =
   | BillStatus
   | PaymentPlanStatus
   | CollectionStage
+  | MarketMessageStatus
+  | SwitchStage
+  | ComplianceStatus
   | 'default';
 
 const variantClasses: Record<BadgeVariant, string> = {
@@ -60,6 +66,21 @@ const variantClasses: Record<BadgeVariant, string> = {
   formal_notice: 'bg-orange-100 text-orange-700',
   field_visit: 'bg-red-100 text-red-700',
   legal: 'bg-red-200 text-red-800',
+  // Market message statuses
+  sent: 'bg-blue-100 text-blue-700',
+  acknowledged: 'bg-teal-100 text-teal-700',
+  // completed: shared with PaymentPlanStatus → teal
+  failed: 'bg-red-100 text-red-700',
+  // rejected: shared with QuoteStatus → red
+  // Switch stages
+  initiated: 'bg-yellow-100 text-yellow-700',
+  confirmed: 'bg-blue-100 text-blue-700',
+  objected: 'bg-orange-100 text-orange-700',
+  // completed/rejected: shared above
+  // Compliance statuses
+  open: 'bg-yellow-100 text-yellow-700',
+  in_progress: 'bg-blue-100 text-blue-700',
+  // completed/overdue: shared with PaymentPlanStatus/BillStatus above
   // fallback
   default: 'bg-gray-100 text-gray-600',
 };
@@ -71,6 +92,7 @@ const labelOverrides: Partial<Record<BadgeVariant, string>> = {
   contact_attempted: 'Contact Attempted',
   formal_notice: 'Formal Notice',
   field_visit: 'Field Visit',
+  in_progress: 'In Progress',
 };
 
 interface BadgeProps {
