@@ -29,14 +29,14 @@ import {
 import { getCustomers } from '@/lib/data/customers';
 import { getBills } from '@/lib/data/bills';
 import { getTasks } from '@/lib/data/tasks';
-import { getDebtAccounts } from '@/lib/data/debt';
+import { getDebtAccounts, getPaymentPlans } from '@/lib/data/debt';
 import { getComplianceItems, getSwitches, getMarketMessages } from '@/lib/data/market';
 import { getAuditEntries, getUnbilledAccounts } from '@/lib/data/finance';
 import { getProducts } from '@/lib/data/products';
 import { getQuotes } from '@/lib/data/quotes';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
-import { AuditEntryAction } from '@/lib/types';
+import { AuditEntry, AuditEntryAction } from '@/lib/types';
 
 // ─── Audit action → icon mapping ─────────────────────────────────────────────
 
@@ -68,6 +68,14 @@ export default function DashboardPage() {
   const quotes = getQuotes();
   const auditEntries = getAuditEntries().slice(0, 10);
   const unbilledAccounts = getUnbilledAccounts();
+
+  // Build plan→customer lookup so audit entries can link to /debt/<customerId>
+  const planCustomerMap = Object.fromEntries(
+    getPaymentPlans().map((p) => [p.id, p.customerId]),
+  );
+  const debtCustomerMap = Object.fromEntries(
+    getDebtAccounts().map((d) => [d.id, d.customerId]),
+  );
 
   // ── KPI 1: Active customers ────────────────────────────────────────────────
   const activeCustomers = customers.filter((c) => c.status === 'active').length;
@@ -143,6 +151,29 @@ export default function DashboardPage() {
       lost: monthSwitches.filter((s) => s.type === 'loss').length,
     };
   });
+
+  function auditEntryHref(entry: AuditEntry): string | null {
+    switch (entry.entityType) {
+      case 'bill': return `/billing/${entry.entityId}`;
+      case 'quote': return `/quotes/${entry.entityId}`;
+      case 'customer': return `/customers/${entry.entityId}`;
+      case 'payment_plan': {
+        const cid = planCustomerMap[entry.entityId];
+        return cid ? `/debt/${cid}` : '/debt';
+      }
+      case 'debt_account': {
+        const cid = debtCustomerMap[entry.entityId];
+        return cid ? `/debt/${cid}` : '/debt';
+      }
+      case 'market_message':
+      case 'switch':
+      case 'meter_reading':
+      case 'compliance_item':
+        return '/market';
+      default:
+        return null;
+    }
+  }
 
   return (
     <div className="max-w-6xl space-y-6">
@@ -264,8 +295,9 @@ export default function DashboardPage() {
           <div className="divide-y divide-gray-100 overflow-y-auto">
             {auditEntries.map((entry) => {
               const Icon = AUDIT_ICONS[entry.action] ?? Activity;
-              return (
-                <div key={entry.id} className="flex gap-3 px-4 py-3">
+              const href = auditEntryHref(entry);
+              const inner = (
+                <>
                   <div className="mt-0.5 shrink-0 text-gray-400">
                     <Icon size={14} />
                   </div>
@@ -275,6 +307,19 @@ export default function DashboardPage() {
                       {formatDateTime(entry.performedAt)}
                     </p>
                   </div>
+                </>
+              );
+              return href ? (
+                <Link
+                  key={entry.id}
+                  href={href}
+                  className="flex gap-3 px-4 py-3 hover:bg-gray-50"
+                >
+                  {inner}
+                </Link>
+              ) : (
+                <div key={entry.id} className="flex gap-3 px-4 py-3">
+                  {inner}
                 </div>
               );
             })}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { notFound } from 'next/navigation';
+import { notFound, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -67,8 +67,14 @@ interface TaskForm {
 const EMPTY_COMM: CommForm = { channel: 'email', direction: 'outbound', subject: '', body: '' };
 const EMPTY_TASK: TaskForm = { title: '', description: '', priority: 'medium', assignedTo: '', dueDate: '' };
 
+const VALID_TABS: Tab[] = ['overview', 'billing', 'communications', 'tasks', 'documents', 'notes'];
+
 export default function CustomerDetailPage({ params }: { params: { id: string } }) {
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const searchParams = useSearchParams();
+  const initialTab = (searchParams.get('tab') ?? 'overview') as Tab;
+  const [activeTab, setActiveTab] = useState<Tab>(
+    VALID_TABS.includes(initialTab) ? initialTab : 'overview',
+  );
   const [, forceUpdate] = useState(0);
   const [showCommModal, setShowCommModal] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);

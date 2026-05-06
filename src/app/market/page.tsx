@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { RefreshCw, AlertCircle, CheckCircle2, Upload } from 'lucide-react';
 import {
   getMarketMessages,
@@ -77,12 +78,17 @@ const COMPLIANCE_STATUS_OPTIONS: ComplianceStatus[] = [
   'overdue',
 ];
 
-// ─── Helper: customer name lookup ─────────────────────────────────────────────
+// ─── Customer cell — links to customer detail when ID resolves ────────────────
 
-function customerName(id?: string): string {
-  if (!id) return '—';
+function CustomerCell({ id }: { id?: string }) {
+  if (!id) return <span className="text-gray-400">—</span>;
   const c = getCustomerById(id);
-  return c ? c.name : id;
+  const name = c ? c.name : id;
+  return (
+    <Link href={`/customers/${id}`} className="text-blue-600 hover:underline">
+      {name}
+    </Link>
+  );
 }
 
 // ─── Objection modal ──────────────────────────────────────────────────────────
@@ -288,7 +294,7 @@ function MessagesTab() {
                   <td className="px-5 py-3 text-gray-500">
                     {msg.direction === 'inbound' ? '← Inbound' : '→ Outbound'}
                   </td>
-                  <td className="px-5 py-3 text-gray-700">{customerName(msg.customerId)}</td>
+                  <td className="px-5 py-3"><CustomerCell id={msg.customerId} /></td>
                   <td className="px-5 py-3">
                     <Badge variant={msg.status} />
                   </td>
@@ -410,7 +416,7 @@ function SwitchesTab() {
                       {sw.type === 'gain' ? '↑ Gain' : '↓ Loss'}
                     </span>
                   </td>
-                  <td className="px-5 py-3 text-gray-700">{customerName(sw.customerId)}</td>
+                  <td className="px-5 py-3"><CustomerCell id={sw.customerId} /></td>
                   <td className="px-5 py-3">
                     <Badge variant={sw.stage} />
                   </td>
@@ -498,7 +504,7 @@ function MeterReadsTab() {
                 key={r.id}
                 className={`border-b border-gray-100 last:border-0 ${i % 2 === 1 ? 'bg-gray-50/50' : ''}`}
               >
-                <td className="px-5 py-3 text-gray-700">{customerName(r.customerId)}</td>
+                <td className="px-5 py-3"><CustomerCell id={r.customerId} /></td>
                 <td className="px-5 py-3 font-mono text-xs text-gray-500">
                   {r.mpan ?? r.mprn ?? '—'}
                 </td>

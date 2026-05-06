@@ -321,6 +321,53 @@ export default function DebtDetailPage({ params }: Props) {
         </Card>
       </div>
 
+      {/* Overdue Bills */}
+      {overdueBills.length > 0 && (
+        <Card padding={false}>
+          <CardHeader className="px-5 pt-4 pb-3">
+            <CardTitle>Overdue Bills ({overdueBills.length})</CardTitle>
+          </CardHeader>
+          <table className="w-full text-sm">
+            <thead className="border-b border-t border-gray-100 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500">
+              <tr>
+                <th className="px-5 py-2.5 text-left">Reference</th>
+                <th className="px-5 py-2.5 text-left">Period</th>
+                <th className="px-5 py-2.5 text-right">Amount Due</th>
+                <th className="px-5 py-2.5 text-right">Amount Paid</th>
+                <th className="px-5 py-2.5 text-left">Due Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {overdueBills.map((bill, i) => (
+                <tr
+                  key={bill.id}
+                  className={`border-b border-gray-100 last:border-0 ${i % 2 === 1 ? 'bg-gray-50/50' : ''}`}
+                >
+                  <td className="px-5 py-3">
+                    <Link
+                      href={`/billing/${bill.id}`}
+                      className="font-medium text-blue-600 hover:underline"
+                    >
+                      {bill.reference}
+                    </Link>
+                  </td>
+                  <td className="px-5 py-3 text-gray-500">
+                    {formatDate(bill.periodFrom)} – {formatDate(bill.periodTo)}
+                  </td>
+                  <td className="px-5 py-3 text-right font-medium text-red-600">
+                    {formatCurrency(bill.amountDue)}
+                  </td>
+                  <td className="px-5 py-3 text-right text-gray-500">
+                    {formatCurrency(bill.amountPaid)}
+                  </td>
+                  <td className="px-5 py-3 text-gray-500">{formatDate(bill.dueDate)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
+
       {/* Notes */}
       {debtAccount.notes && (
         <Card>
