@@ -31,6 +31,15 @@ function timeToMinutes(t: string): number {
   return h * 60 + m;
 }
 
+// Split a time window into one or two segments, handling midnight-crossing windows (e.g. 23:00→07:00).
+function getTimelineSegments(startTime: string, endTime: string): { start: number; end: number }[] {
+  const start = timeToMinutes(startTime);
+  const end = endTime === '24:00' ? 1440 : timeToMinutes(endTime);
+  if (end > start) return [{ start, end }];
+  // Midnight-crossing: render as two segments
+  return [{ start, end: 1440 }, { start: 0, end }];
+}
+
 interface PricingEditState {
   standingCharge: string;
   vatRate: string;
@@ -263,22 +272,23 @@ export default function ProductDetailPage({ params }: Props) {
           <CardHeader><CardTitle>Rate Timeline (24h)</CardTitle></CardHeader>
           <div className="relative h-10 overflow-hidden rounded-md" style={{ background: 'var(--bg-elevated)' }}>
             {product.pricingStructure.rates.map((rate, rateIdx) =>
-              (rate.timeWindows ?? []).flatMap((tw, twIdx) =>
-                tw.daysOfWeek.includes(1) ? (
+              (rate.timeWindows ?? []).flatMap((tw, twIdx) => {
+                if (!tw.daysOfWeek.includes(1)) return [];
+                return getTimelineSegments(tw.startTime, tw.endTime).map((seg, segIdx) => (
                   <div
-                    key={`${rate.id}-${twIdx}`}
+                    key={`${rate.id}-${twIdx}-${segIdx}`}
                     className="absolute top-0 h-full flex items-center justify-center overflow-hidden"
                     style={{
                       background: BAND_COLORS[rateIdx % BAND_COLORS.length],
-                      left: `${(timeToMinutes(tw.startTime) / 1440) * 100}%`,
-                      width: `${((timeToMinutes(tw.endTime === '24:00' ? '00:00' : tw.endTime) - timeToMinutes(tw.startTime) + 1440) % 1440) / 1440 * 100}%`,
+                      left: `${(seg.start / 1440) * 100}%`,
+                      width: `${((seg.end - seg.start) / 1440) * 100}%`,
                     }}
                     title={`${rate.label}: ${tw.startTime}–${tw.endTime}`}
                   >
                     <span className="truncate px-1 text-xs font-medium" style={{ color: '#fff' }}>{rate.label}</span>
                   </div>
-                ) : [],
-              ),
+                ));
+              }),
             )}
           </div>
           <div className="mt-1 flex justify-between text-xs" style={{ color: 'var(--text-tertiary)' }}>

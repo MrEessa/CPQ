@@ -9,8 +9,34 @@ import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import { Card } from '@/components/ui/Card';
 import { formatDate } from '@/lib/utils';
-import { FuelType, Market, ProductStatus, ProductType } from '@/lib/types';
+import { FuelType, Market, PricingRate, ProductStatus, ProductType } from '@/lib/types';
 import { GB_MARKET, IE_MARKET } from '@/lib/data/seed';
+
+function defaultRates(productType: ProductType): PricingRate[] {
+  const ts = Date.now();
+  switch (productType) {
+    case 'flat_rate':
+      return [{ id: `rate-${ts}-1`, label: 'Unit Rate', unitRate: 0 }];
+    case 'time_of_use':
+      return [
+        { id: `rate-${ts}-1`, label: 'Day Rate', unitRate: 0, timeWindows: [{ daysOfWeek: [1,2,3,4,5], startTime: '07:00', endTime: '23:00' }, { daysOfWeek: [0,6], startTime: '08:00', endTime: '22:00' }] },
+        { id: `rate-${ts}-2`, label: 'Night Rate', unitRate: 0, timeWindows: [{ daysOfWeek: [1,2,3,4,5], startTime: '23:00', endTime: '07:00' }, { daysOfWeek: [0,6], startTime: '22:00', endTime: '08:00' }] },
+      ];
+    case 'dynamic':
+      return [
+        { id: `rate-${ts}-1`, label: 'Off-Peak', unitRate: 0, timeWindows: [{ daysOfWeek: [0,1,2,3,4,5,6], startTime: '00:00', endTime: '07:00' }] },
+        { id: `rate-${ts}-2`, label: 'Standard', unitRate: 0, timeWindows: [{ daysOfWeek: [0,1,2,3,4,5,6], startTime: '07:00', endTime: '16:00' }, { daysOfWeek: [0,1,2,3,4,5,6], startTime: '19:00', endTime: '24:00' }] },
+        { id: `rate-${ts}-3`, label: 'Peak', unitRate: 0, timeWindows: [{ daysOfWeek: [1,2,3,4,5], startTime: '16:00', endTime: '19:00' }] },
+      ];
+    case 'export':
+      return [{ id: `rate-${ts}-1`, label: 'Export Rate', unitRate: 0 }];
+    case 'bundled':
+      return [
+        { id: `rate-${ts}-1`, label: 'Electricity Unit Rate', unitRate: 0 },
+        { id: `rate-${ts}-2`, label: 'Gas Unit Rate', unitRate: 0 },
+      ];
+  }
+}
 
 const MARKETS = [GB_MARKET, IE_MARKET];
 const PRODUCT_TYPES: ProductType[] = ['flat_rate', 'time_of_use', 'dynamic', 'export', 'bundled'];
@@ -38,10 +64,17 @@ export default function CataloguePage() {
   function handleAddProduct() {
     if (!form.name || !form.productType || !form.fuelType || !form.markets.length) return;
     const selectedMarkets: Market[] = MARKETS.filter((m) => form.markets.includes(m.code));
+    const pt = form.productType as ProductType;
+    const hasStandingCharge = pt !== 'export';
     addProduct({
-      name: form.name, description: '', productType: form.productType as ProductType,
+      name: form.name, description: '', productType: pt,
       fuelType: form.fuelType as FuelType, market: selectedMarkets, eligibilityRules: [],
-      pricingStructure: { currency: selectedMarkets[0]?.currency ?? 'GBP', rates: [], vatRate: selectedMarkets[0]?.vatRate ?? 5 },
+      pricingStructure: {
+        currency: selectedMarkets[0]?.currency ?? 'GBP',
+        vatRate: selectedMarkets[0]?.vatRate ?? 5,
+        standingCharge: hasStandingCharge ? 0 : undefined,
+        rates: defaultRates(pt),
+      },
       effectiveFrom: new Date().toISOString().split('T')[0],
     });
     setShowModal(false);
