@@ -72,7 +72,7 @@ export default function FinancePage() {
   }
 
   return (
-    <div className="max-w-5xl space-y-6">
+    <div className="w-full space-y-6">
       <h2 className="section-title">Financial Control</h2>
 
       <div className="grid grid-cols-4 gap-4">

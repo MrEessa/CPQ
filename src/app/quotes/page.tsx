@@ -27,7 +27,7 @@ export default function QuotesPage() {
   });
 
   return (
-    <div className="max-w-5xl space-y-4">
+    <div className="w-full space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="section-title">{quotes.length} quote{quotes.length !== 1 ? 's' : ''}</h2>
         <Link href="/quotes/new">

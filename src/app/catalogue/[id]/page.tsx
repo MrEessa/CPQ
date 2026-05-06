@@ -100,7 +100,7 @@ export default function ProductDetailPage({ params }: Props) {
   const smallBtn: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 4, borderRadius: 6, border: '1px solid var(--border-strong)', background: 'transparent', color: 'var(--text-secondary)', padding: '3px 10px', fontSize: '0.75rem', fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font-body)' };
 
   return (
-    <div className="max-w-4xl space-y-5">
+    <div className="w-full space-y-5">
       <div className="flex items-center gap-2">
         <Link href="/catalogue" style={{ color: 'var(--text-tertiary)' }}
           onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = 'var(--text-primary)')}

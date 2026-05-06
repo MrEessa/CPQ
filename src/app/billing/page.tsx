@@ -72,7 +72,7 @@ export default function BillingPage() {
   ];
 
   return (
-    <div className="max-w-5xl space-y-5">
+    <div className="w-full space-y-5">
       <div className="flex items-center justify-between">
         <h2 className="section-title">Billing</h2>
         <Button size="sm" onClick={() => setShowGenModal(true)}><Plus size={14} /> Generate Bill</Button>

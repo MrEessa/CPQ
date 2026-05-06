@@ -141,7 +141,7 @@ export default function DashboardPage() {
   const axisTickStyle = { fontSize: 11, fill: c.axis };
 
   return (
-    <div className="max-w-6xl space-y-6">
+    <div className="w-full space-y-6">
 
       {/* ── Page header ────────────────────────────────────────────────────── */}
       <div>

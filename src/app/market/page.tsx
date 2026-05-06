@@ -319,7 +319,7 @@ function ComplianceTab() {
 export default function MarketPage() {
   const [activeTab, setActiveTab] = useState<TabId>('messages');
   return (
-    <div className="max-w-6xl space-y-6">
+    <div className="w-full space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="section-title">Market Communications</h2>

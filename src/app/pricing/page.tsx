@@ -14,7 +14,7 @@ export default function PricingPage() {
   const rules = getAllPricingRules(filterMarket || undefined);
 
   return (
-    <div className="max-w-5xl space-y-4">
+    <div className="w-full space-y-4">
       <div>
         <h2 className="section-title">Pricing Rules</h2>
         <p className="section-subtitle">All rate lines across active and draft products</p>

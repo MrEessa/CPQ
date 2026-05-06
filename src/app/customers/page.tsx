@@ -50,7 +50,7 @@ export default function CustomersPage() {
   }
 
   return (
-    <div className="max-w-5xl space-y-4">
+    <div className="w-full space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="section-title">{customers.length} customer{customers.length !== 1 ? 's' : ''}</h2>
         <Button size="sm" onClick={() => setShowAddModal(true)}><Plus size={14} /> Add Customer</Button>

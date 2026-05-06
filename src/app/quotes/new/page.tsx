@@ -101,7 +101,7 @@ export default function NewQuotePage() {
   const step2Valid = selectedProductIds.length > 0;
 
   return (
-    <div className="max-w-3xl space-y-5">
+    <div className="w-full max-w-3xl space-y-5">
       <div className="flex items-center gap-3">
         <button
           onClick={() => (step > 1 ? setStep((s) => (s - 1) as Step) : router.back())}

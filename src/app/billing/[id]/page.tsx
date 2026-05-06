@@ -57,7 +57,7 @@ export default function BillDetailPage({ params }: { params: { id: string } }) {
   const bd = bill.breakdown;
 
   return (
-    <div className="max-w-4xl space-y-5">
+    <div className="w-full space-y-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Link href="/billing" style={{ color: 'var(--text-tertiary)' }}

@@ -55,7 +55,7 @@ export default function QuoteDetailPage({ params }: Props) {
   }
 
   return (
-    <div className="max-w-4xl space-y-5">
+    <div className="w-full space-y-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Link href="/quotes" style={{ color: 'var(--text-tertiary)' }}

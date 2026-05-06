@@ -113,7 +113,7 @@ export default function AnalyticsPage() {
   const legendStyle  = { iconSize: 10, wrapperStyle: { fontSize: 11, color: 'var(--text-secondary)' } };
 
   return (
-    <div className="max-w-6xl space-y-5">
+    <div className="w-full space-y-5">
       <div>
         <h2 className="section-title">Analytics</h2>
         <p className="section-subtitle">Portfolio metrics, billing trends, customer insights, and tariff performance</p>

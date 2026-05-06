@@ -75,7 +75,7 @@ export default function DebtDetailPage({ params }: { params: { customerId: strin
   function saveVulnerabilityFlags() { setVulnerabilityFlags(debtAccount.id, vulnFlags); setVulnSaved(true); }
 
   return (
-    <div className="max-w-4xl space-y-5">
+    <div className="w-full space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Link href="/debt" style={{ color: 'var(--text-tertiary)' }}

@@ -24,7 +24,7 @@ export default function DebtPage() {
   ];
 
   return (
-    <div className="max-w-5xl space-y-5">
+    <div className="w-full space-y-5">
       <h2 className="section-title">Debt &amp; Collections</h2>
 
       <div className="grid grid-cols-4 gap-4">
