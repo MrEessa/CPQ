@@ -1,4 +1,4 @@
-import { ProductStatus, ProductType, QuoteStatus, CustomerStatus, TaskPriority } from '@/lib/types';
+import { BillStatus, ProductStatus, ProductType, QuoteStatus, CustomerStatus, TaskPriority } from '@/lib/types';
 
 type BadgeVariant =
   | QuoteStatus
@@ -6,6 +6,7 @@ type BadgeVariant =
   | ProductType
   | CustomerStatus
   | TaskPriority
+  | BillStatus
   | 'default';
 
 const variantClasses: Record<BadgeVariant, string> = {
@@ -34,6 +35,10 @@ const variantClasses: Record<BadgeVariant, string> = {
   medium: 'bg-blue-100 text-blue-700',
   high: 'bg-orange-100 text-orange-700',
   critical: 'bg-red-100 text-red-700',
+  // Bill statuses (issued shared with QuoteStatus)
+  paid: 'bg-green-100 text-green-700',
+  overdue: 'bg-red-100 text-red-700',
+  disputed: 'bg-yellow-100 text-yellow-700',
   // fallback
   default: 'bg-gray-100 text-gray-600',
 };
