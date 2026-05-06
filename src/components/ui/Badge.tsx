@@ -1,4 +1,13 @@
-import { BillStatus, ProductStatus, ProductType, QuoteStatus, CustomerStatus, TaskPriority } from '@/lib/types';
+import {
+  BillStatus,
+  CollectionStage,
+  CustomerStatus,
+  PaymentPlanStatus,
+  ProductStatus,
+  ProductType,
+  QuoteStatus,
+  TaskPriority,
+} from '@/lib/types';
 
 type BadgeVariant =
   | QuoteStatus
@@ -7,6 +16,8 @@ type BadgeVariant =
   | CustomerStatus
   | TaskPriority
   | BillStatus
+  | PaymentPlanStatus
+  | CollectionStage
   | 'default';
 
 const variantClasses: Record<BadgeVariant, string> = {
@@ -39,6 +50,16 @@ const variantClasses: Record<BadgeVariant, string> = {
   paid: 'bg-green-100 text-green-700',
   overdue: 'bg-red-100 text-red-700',
   disputed: 'bg-yellow-100 text-yellow-700',
+  // Payment plan statuses (active shared with ProductStatus)
+  completed: 'bg-teal-100 text-teal-700',
+  breached: 'bg-red-200 text-red-800',
+  cancelled: 'bg-gray-200 text-gray-500',
+  // Collection stages
+  monitoring: 'bg-gray-100 text-gray-600',
+  contact_attempted: 'bg-yellow-100 text-yellow-700',
+  formal_notice: 'bg-orange-100 text-orange-700',
+  field_visit: 'bg-red-100 text-red-700',
+  legal: 'bg-red-200 text-red-800',
   // fallback
   default: 'bg-gray-100 text-gray-600',
 };
@@ -47,6 +68,9 @@ const labelOverrides: Partial<Record<BadgeVariant, string>> = {
   pending_review: 'Pending Review',
   flat_rate: 'Flat Rate',
   time_of_use: 'Time of Use',
+  contact_attempted: 'Contact Attempted',
+  formal_notice: 'Formal Notice',
+  field_visit: 'Field Visit',
 };
 
 interface BadgeProps {
