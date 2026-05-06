@@ -64,7 +64,6 @@ const NAV_GROUPS: NavGroup[] = [
 
 function isActive(href: string, pathname: string): boolean {
   if (href === '/') return pathname === '/';
-  // /quotes/new must not match /quotes
   if (href === '/quotes/new') return pathname === '/quotes/new';
   if (href === '/quotes') return pathname === '/quotes' || (pathname.startsWith('/quotes/') && pathname !== '/quotes/new');
   return pathname === href || pathname.startsWith(href + '/');
@@ -74,17 +73,45 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="flex h-screen w-60 flex-col border-r border-gray-200 bg-white">
-      <div className="flex items-center gap-2 border-b border-gray-200 px-5 py-4">
-        <Zap size={20} className="text-blue-600" />
-        <span className="text-sm font-semibold text-gray-900">Energy Platform</span>
+    <aside
+      className="flex h-screen w-60 flex-col shrink-0"
+      style={{
+        background: 'var(--bg-subtle)',
+        borderRight: '1px solid var(--border-default)',
+      }}
+    >
+      {/* Logo */}
+      <div
+        className="flex items-center gap-2 px-5 py-4"
+        style={{ borderBottom: '1px solid var(--border-default)' }}
+      >
+        <Zap size={18} style={{ color: 'var(--color-primary)' }} />
+        <span
+          className="text-sm"
+          style={{
+            fontFamily: 'var(--font-display)',
+            fontWeight: 600,
+            color: 'var(--text-primary)',
+          }}
+        >
+          Energy Platform
+        </span>
       </div>
 
+      {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-3 py-3">
         {NAV_GROUPS.map((group, gi) => (
           <div key={gi} className={gi > 0 ? 'mt-4' : ''}>
             {group.label && (
-              <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+              <p
+                className="mb-1 px-3 uppercase"
+                style={{
+                  fontSize: '0.65rem',
+                  letterSpacing: '0.08em',
+                  color: 'var(--text-tertiary)',
+                  fontWeight: 500,
+                }}
+              >
                 {group.label}
               </p>
             )}
@@ -94,13 +121,35 @@ export default function Sidebar() {
                 <Link
                   key={href}
                   href={href}
-                  className={`mb-0.5 flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                  className="mb-0.5 flex items-center gap-2.5 py-2 pr-3 text-sm nav-item"
+                  style={
                     active
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                  }`}
+                      ? {
+                          background: 'var(--sidebar-active-bg)',
+                          borderLeft: '2px solid var(--sidebar-active-border)',
+                          borderRadius: '0 6px 6px 0',
+                          paddingLeft: '10px',
+                          color: 'var(--sidebar-active-text)',
+                          fontWeight: 500,
+                          transition: 'color 150ms ease',
+                        }
+                      : {
+                          borderRadius: '6px',
+                          paddingLeft: '12px',
+                          color: 'var(--text-secondary)',
+                          transition: 'color 150ms ease',
+                        }
+                  }
+                  onMouseEnter={(e) => {
+                    if (!active)
+                      (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)';
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!active)
+                      (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)';
+                  }}
                 >
-                  <Icon size={16} />
+                  <Icon size={15} />
                   {label}
                 </Link>
               );
@@ -109,8 +158,17 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="border-t border-gray-200 px-5 py-3">
-        <p className="text-xs text-gray-400">Portfolio Demo v1.0</p>
+      {/* Footer */}
+      <div
+        className="px-5 py-3"
+        style={{ borderTop: '1px solid var(--border-default)' }}
+      >
+        <p
+          className="text-xs"
+          style={{ color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)' }}
+        >
+          Portfolio Demo v1.0
+        </p>
       </div>
     </aside>
   );

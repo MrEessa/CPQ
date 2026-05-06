@@ -1,8 +1,10 @@
-# Energy CPQ — Configure, Price, Quote Demo
+# Energy Retail Operations Platform
 
-A working CPQ demo for energy retail. Products are configured with tariff structures (flat-rate, TOU, dynamic/agile, export, bundled), priced through a calculation engine, and quoted through a status-managed workflow.
+A full-stack demo of retail energy operations, built as a portfolio piece. It covers the full energy retail lifecycle - CPQ, customer management, billing, debt & collections, analytics, financial control, and market communications - end-to-end in a single app.
 
-Next.js 14, TypeScript, Tailwind. Data is in-memory — no database needed.
+I built this to show how product and technical thinking combine in an energy SaaS context. The data model and state machines reflect how these systems could actually work, not a toy approximation.
+
+Next.js 14, TypeScript, Tailwind CSS. In-memory data - no database needed.
 
 ---
 
@@ -13,111 +15,117 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000) or access via [https://cpq-seven.vercel.app/](https://cpq-seven.vercel.app/)
 
 ---
 
-## Application Overview
+## Modules
 
-Four sections via the left sidebar:
+Navigation is grouped by operational domain. All sections are reachable from the left sidebar.
 
-| Section | Path | Purpose |
-|---|---|---|
-| Dashboard | `/` | Summary stats and recent activity |
-| Catalogue | `/catalogue` | Browse and manage energy products |
-| Quotes | `/quotes` | View and create customer quotes |
-| Pricing Rules | `/pricing` | Overview of pricing structures |
+
+| Module                | Path          | Purpose                                                    |
+| --------------------- | ------------- | ---------------------------------------------------------- |
+| Dashboard             | `/`           | KPI cards, activity feed, billing and switch charts        |
+| Product Catalogue     | `/catalogue`  | Browse, configure, and version energy products             |
+| Quotes                | `/quotes`     | Quote list and status management                           |
+| Quote Builder         | `/quotes/new` | Multi-step quote creation with live pricing                |
+| Customers             | `/customers`  | Customer accounts with full operational detail             |
+| Billing               | `/billing`    | Bill generation, payment recording, dispute handling       |
+| Debt & Collections    | `/debt`       | Arrears management, payment plans, vulnerability flags     |
+| Analytics             | `/analytics`  | Portfolio, billing, customer behaviour, tariff performance |
+| Financial Control     | `/finance`    | Ledger, gross margin, revenue assurance, audit log         |
+| Market Communications | `/market`     | Industry messages, switches, meter reads, compliance queue |
+
 
 ---
 
-## How to Use
+## Feature Walkthrough
 
-### Dashboard
+### Dashboard (`/`)
 
-Summary cards showing products by status, quotes this month, and pipeline value (issued quote totals). Below that: the last 5 quotes and shortcuts to New Quote and Add Product.
-
----
+Five KPI cards (active customers, MTD revenue, open tasks, accounts in arrears, compliance items due this week). Eight module quick-links with one-line status. A 6-month billing revenue bar chart and a switches gained/lost chart. Live activity feed from the audit log - entries link through to the affected record.
 
 ### Product Catalogue (`/catalogue`)
 
-Lists all products — name, type, fuel, status, market, version, last updated.
+Table of all products: name, type, fuel, status, market, version, last updated. Filter by status, product type, or market.
 
-**Filtering:** Status, product type, or market via the filter bar.
+Product detail (`/catalogue/[id]`): pricing visualised by type - flat rate shows a rate card; TOU shows a 24-hour band timeline; bundled lists component products and rates. Eligibility rules rendered in plain English. Full version history with expandable snapshots. Edit pricing on draft/active products - saves a versioned archive and activates a new pricing record from the date you specify.
 
-**Adding a product:** Click **Add Product**. Name, product type, fuel type, market(s) are required. Products start in `draft`.
+### Quotes (`/quotes`, `/quotes/new`, `/quotes/[id]`)
 
-**Viewing a product:** Click any row.
+Quote list with status and customer-type filters.
 
----
+Builder (three steps): customer details and usage estimate → active products filtered by market with live eligibility check and cost estimate → full cost breakdown with notes and valid-until date. Save as draft or issue directly.
 
-### Product Detail (`/catalogue/[id]`)
+Quote detail: status badge, available transition buttons (e.g. issued → accepted / rejected), status timeline with timestamps, per-product pricing breakdown.
 
-Full product record including:
+### Customer Management (`/customers`, `/customers/[id]`)
 
-- **Pricing structure** — flat rate shows standing charge + unit rate; TOU shows a 24-hour rate band timeline; bundled shows component products and their rates
-- **Eligibility rules** — plain-language conditions (e.g. "Customer type must be residential")
-- **Version history** — full history of all past pricing versions, expandable per entry showing rates, standing charge, levies, and effective date range
+Filterable customer list (type, status, balance bucket) with an Add Customer modal.
 
-**Status changes:** The dropdown moves a product through `draft → active → deprecated`. Only `active` products show up in the quote builder.
+Customer detail: tabbed layout - Overview (supply address, meter info, contract dates, direct debit), Billing (bill history with links), Communications, Tasks, Documents, Notes. Right-hand quick-stats panel (balance, usage, product, direct debit). Send Communication and Create Task via modals. Supports deep-linking to a specific tab via `?tab=` query param.
 
-**Editing pricing:** Click **Edit pricing** on any `draft` or `active` product to update standing charge, unit rates, VAT, and levies. On save, the current pricing is archived as a numbered version snapshot and a new version becomes active from the date you specify.
+### Billing (`/billing`, `/billing/[id]`)
 
----
+Overview: 4 KPI cards (total billed MTD, collected, outstanding, overdue) and a recent-bills table with status filters. Generate Bill modal runs the billing engine against a customer and period.
 
-### Quote List (`/quotes`)
+Bill detail: itemised breakdown (standing charge, rate lines, levies, VAT, total) - same visual treatment as quote detail. Payment history. Action buttons: Record Payment, Raise Dispute, Reissue. Status machine enforces valid transitions (issued → paid / overdue / disputed).
 
-All quotes: reference, customer, products, annual cost (inc. VAT), status, expiry. Filter by status or customer type.
+### Debt & Collections (`/debt`, `/debt/[customerId]`)
 
----
+Overview: 4 KPI cards + arrears table with vulnerability indicator and plan-status columns.
 
-### Quote Builder (`/quotes/new`)
+Debt detail: arrears summary, payment plan (create/active/breached states with instalment schedule), vulnerability flag toggles, collection stage advancer with confirmation modal. Overdue bills table links through to billing detail.
 
-Three steps:
+### Analytics (`/analytics`)
 
-**Step 1 — Customer**
-Name, type (residential / SME / corporate), estimated annual usage in kWh, and market. There's a benchmark note for residential usage (3,500 kWh/yr).
+Four tabs:
 
-**Step 2 — Product Selection**
-Active products for the chosen market. Eligibility runs against the customer inputs — ineligible products are greyed out with a reason on hover. Cost estimate updates as you select.
+- **Portfolio Overview** - active customers, revenue and usage trends, product mix, market split
+- **Billing Performance** - collection rate, overdue ageing, payment method breakdown
+- **Customer Behaviour** - churn indicators, usage distribution, direct debit vs. prepayment split
+- **Tariff Performance** - revenue and gross margin per product, bridging into Financial Control
 
-**Step 3 — Review & Issue**
-Itemised cost breakdown (standing charge, rate lines, levies, VAT, total), a notes field, and a valid-until date (default 30 days). Save as draft or issue.
+All charts use recharts. Figures derive from seed data where possible; static supplementary values are kept consistent with derived totals.
 
----
+### Financial Control (`/finance`)
 
-### Quote Detail (`/quotes/[id]`)
+Four anchored sections: Ledger (filterable by entry type), Gross Margin (reuses the same `getMarginSummary()` source as Tariff Performance - both screens always agree), Revenue Assurance (unbilled accounts with flag-for-review toggle), Audit Log (chronological entries for all mutating operations).
 
-Full quote record. The status badge shows available transitions as action buttons — an `issued` quote gets "Mark Accepted" and "Mark Rejected". Below: status timeline with timestamps and the per-product pricing breakdown.
+### Market Communications (`/market`)
+
+Four tabs:
+
+- **Industry Messages** - inbound/outbound messages with Retry action on failures
+- **Switch Management** - gain and loss switches; Object action available within the objection window on in-progress gains
+- **Meter Reads** - submitted reads by meter and date
+- **Compliance Queue** - compliance items with status advancement and overdue highlighting
 
 ---
 
 ## Seed Data
 
-Six products and five quotes load on startup, so there's something to explore immediately.
+Loads on startup - no setup needed.
 
-**Products:**
-
-| ID | Type | Market | Status |
-|---|---|---|---|
-| StandardElec-v2 | Flat rate | GB | Active |
-| EcoTOU-v1 | Time-of-use | GB | Active |
-| AgileElec-v1 | Dynamic/agile | GB | Active |
-| ExportFIT-v1 | Export (SEG-style) | GB | Active |
-| GreenBundle-v1 | Bundled (elec + gas) | GB | Active |
-| IEFlatElec-v1 | Flat rate | IE | Draft |
-
-**Quotes (5):** Two issued, one accepted, one draft, one expired — each with a multi-event status history.
+- **Products (6):** flat rate, time-of-use, dynamic/agile, export (SEG-style), bundled (elec + gas), and a draft IE market product
+- **Customers (12):** mix of residential / SME / I&C; smart, traditional, and prepayment meters; a spread of balances including credit, debt, and a suspended account
+- **Quotes (5):** two issued, one accepted, one draft, one expired
+- **Bills (~40):** mix of paid, overdue, disputed, and issued - generated via the billing engine so totals reconcile with the pricing engine
+- **Debt (4 accounts):** active plan, breached plan, vulnerable customer, monitoring stage
+- **Market data:** 15 industry messages, 5 switches (2 gain / 3 loss), 8 meter reads, 6 compliance items (2 overdue)
+- **Finance:** ledger entries and audit log consistent with seed billing and payment activity
 
 ---
 
 ## Stack
 
-- **Next.js 14** (App Router)
-- **TypeScript** (strict mode)
-- **Tailwind CSS**
-- **lucide-react** — icons
-- **recharts** — pricing visualisations
-- In-memory data layer — no database
+- Next.js 14 (App Router)
+- TypeScript (strict mode, no `any`)
+- Tailwind CSS
+- lucide-react - icons
+- recharts - all data visualisations
+- In-memory data layer - no database or external API
 
 ---
 
@@ -125,17 +133,46 @@ Six products and five quotes load on startup, so there's something to explore im
 
 ```
 src/
-  app/               # Pages (dashboard, catalogue, quotes, pricing)
+  app/
+    page.tsx                        # Dashboard
+    catalogue/                      # Product catalogue + detail
+    quotes/                         # Quote list, builder, detail
+    customers/                      # Customer list + detail
+    billing/                        # Billing overview + bill detail
+    debt/                           # Debt overview + customer debt detail
+    analytics/                      # Analytics (4 tabs)
+    finance/                        # Financial control
+    market/                         # Market communications (4 tabs)
   components/
-    ui/              # Button, Badge, Card, Table, Modal
-    layout/          # Sidebar, header shell
-    catalogue/       # Product-specific components
-    quotes/          # Quote builder components
-    pricing/         # Pricing rule components
+    ui/                             # Button, Badge, Card, Table, Modal
+    layout/                         # Grouped sidebar, header shell
+    catalogue/                      # Product components
+    quotes/                         # Quote builder components
+    customers/                      # Customer components
+    billing/                        # Billing components
+    debt/                           # Debt & collections components
+    analytics/                      # Chart components
+    finance/                        # Finance components
+    market/                         # Market comms components
   lib/
-    types.ts         # TypeScript interfaces
-    pricing-engine.ts
-    quote-engine.ts
-    data/            # Seed data + data access
-  hooks/             # useCatalogue, useQuote
+    types.ts                        # All TypeScript interfaces
+    pricing-engine.ts               # Core pricing calculation
+    quote-engine.ts                 # Quote lifecycle / status machine
+    billing-engine.ts               # Bill generation
+    debt-engine.ts                  # Payment plan + collection state machine
+    market-engine.ts                # Switch / message status transitions
+    utils.ts                        # formatCurrency, formatDate, etc.
+    data/
+      seed.ts                       # Re-exports all seed modules
+      seed-customers.ts
+      seed-bills.ts
+      seed-debt.ts
+      seed-market.ts
+      seed-finance.ts
+      products.ts / quotes.ts / customers.ts / bills.ts
+      communications.ts / tasks.ts / debt.ts / market.ts / finance.ts
+  hooks/
+    useCatalogue.ts
+    useQuote.ts
 ```
+
