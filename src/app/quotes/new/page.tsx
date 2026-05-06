@@ -15,7 +15,7 @@ import { Customer, CustomerType, Product } from '@/lib/types';
 
 type Step = 1 | 2 | 3;
 
-const CUSTOMER_TYPES: CustomerType[] = ['residential', 'sme', 'corporate'];
+const CUSTOMER_TYPES: CustomerType[] = ['residential', 'sme', 'ic'];
 const MARKETS = ['GB', 'IE'];
 
 function StepIndicator({ current }: { current: Step }) {
@@ -72,12 +72,23 @@ export default function NewQuotePage() {
     return d.toISOString().split('T')[0];
   });
 
+  const now = new Date().toISOString();
   const customer: Customer = {
     id: `cust-new-${Date.now()}`,
+    accountRef: '',
     name: customerName,
     customerType,
+    status: 'active',
+    supplyAddress: { line1: '', city: '', postcode: '', countryCode: market },
+    billingAddress: { line1: '', city: '', postcode: '', countryCode: market },
+    meterType: 'smart',
+    currentProducts: [],
     annualUsageKwh: annualUsage,
     market,
+    supplyStartDate: now.split('T')[0],
+    balance: 0,
+    createdAt: now,
+    updatedAt: now,
   };
 
   const activeProducts = getProducts({ status: ['active'], market });

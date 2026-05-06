@@ -18,7 +18,7 @@ const STATUSES: QuoteStatus[] = [
   'rejected',
   'expired',
 ];
-const CUSTOMER_TYPES: CustomerType[] = ['residential', 'sme', 'corporate'];
+const CUSTOMER_TYPES: CustomerType[] = ['residential', 'sme', 'ic'];
 
 export default function QuotesPage() {
   const [filterStatus, setFilterStatus] = useState<QuoteStatus[]>([]);
