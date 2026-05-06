@@ -96,7 +96,7 @@ export default function QuoteDetailPage({ params }: Props) {
           <dl className="space-y-2 text-sm">
             {[
               ['Name', quote.customerName],
-              ['Type', <span className="capitalize">{quote.customerType}</span>],
+              ['Type', <span key="type" className="capitalize">{quote.customerType}</span>],
               ['Customer ID', quote.customerId],
               ['Annual usage', formatUsage(quote.annualUsageKwh)],
               ['Quote created', formatDate(quote.createdAt)],

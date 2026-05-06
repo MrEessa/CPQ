@@ -519,3 +519,11 @@ export const SEED_QUOTES: Quote[] = [
     ],
   },
 ];
+
+// ─── Re-exports from per-entity seed files ────────────────────────────────────
+
+export { SEED_CUSTOMERS, SEED_COMMUNICATIONS, SEED_TASKS } from './seed-customers';
+export { SEED_BILLS } from './seed-bills';
+export { SEED_DEBT_ACCOUNTS, SEED_PAYMENT_PLANS } from './seed-debt';
+export { SEED_MARKET_MESSAGES, SEED_SWITCHES, SEED_METER_READINGS, SEED_COMPLIANCE_ITEMS } from './seed-market';
+export { SEED_LEDGER_ENTRIES, SEED_AUDIT_ENTRIES } from './seed-finance';

@@ -8,7 +8,7 @@ import { getProductById, updateProductStatus, updateProductPricing } from '@/lib
 import Badge from '@/components/ui/Badge';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { formatDate, formatRate, formatStandingCharge } from '@/lib/utils';
-import { PricingStructure, ProductStatus, ProductVersionSnapshot } from '@/lib/types';
+import { PricingStructure, ProductStatus } from '@/lib/types';
 
 const STATUS_TRANSITIONS: Record<ProductStatus, ProductStatus[]> = {
   draft: ['active'],
