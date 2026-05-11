@@ -66,6 +66,21 @@ function resolveProduct(productId: string): Product | undefined {
   return getProductById(productId);
 }
 
+// Calculate cost directly from a pricing snapshot — used by quote detail to avoid live-product drift
+export function calculateCostFromSnapshot(
+  pricingStructure: PricingStructure,
+  annualUsageKwh: number,
+  usageProfile?: { peakPercent: number; offPeakPercent: number; nightPercent?: number },
+): CostBreakdown {
+  return buildBreakdown(
+    pricingStructure,
+    annualUsageKwh,
+    usageProfile?.peakPercent ?? DEFAULT_PEAK_PERCENT,
+    usageProfile?.offPeakPercent ?? DEFAULT_OFF_PEAK_PERCENT,
+    usageProfile?.nightPercent,
+  );
+}
+
 export function calculateCost(input: PricingInput): CostBreakdown {
   const { product, annualUsageKwh, usageProfile } = input;
 

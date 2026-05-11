@@ -11,12 +11,24 @@ import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { formatCurrency, formatRate, formatStandingCharge } from '@/lib/utils';
-import { Customer, CustomerType, Product } from '@/lib/types';
+import { Customer, CustomerType, MeterType, Product } from '@/lib/types';
 
 type Step = 1 | 2 | 3;
 
 const CUSTOMER_TYPES: CustomerType[] = ['residential', 'sme', 'ic'];
 const MARKETS = ['GB', 'IE'];
+const METER_TYPES: { value: MeterType; label: string }[] = [
+  { value: 'traditional', label: 'Traditional' },
+  { value: 'smart',       label: 'Smart' },
+  { value: 'prepayment',  label: 'Prepayment' },
+  { value: 'hh',          label: 'Half-Hourly (HH)' },
+];
+// Default meter type per customer type — used to drive the demo eligibility walkthrough
+const DEFAULT_METER_TYPE: Record<CustomerType, MeterType> = {
+  residential: 'traditional',
+  sme: 'smart',
+  ic: 'hh',
+};
 
 function StepIndicator({ current }: { current: Step }) {
   const steps = [{ n: 1, label: 'Customer' }, { n: 2, label: 'Products' }, { n: 3, label: 'Review' }];
@@ -59,6 +71,7 @@ export default function NewQuotePage() {
   const [step, setStep] = useState<Step>(1);
   const [customerName, setCustomerName]   = useState('');
   const [customerType, setCustomerType]   = useState<CustomerType>('residential');
+  const [meterType, setMeterType]         = useState<MeterType>('traditional');
   const [annualUsage, setAnnualUsage]     = useState(3500);
   const [market, setMarket]               = useState('GB');
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
@@ -70,7 +83,7 @@ export default function NewQuotePage() {
     id: `cust-new-${Date.now()}`, accountRef: '', name: customerName, customerType, status: 'active',
     supplyAddress: { line1: '', city: '', postcode: '', countryCode: market },
     billingAddress: { line1: '', city: '', postcode: '', countryCode: market },
-    meterType: 'smart', currentProducts: [], annualUsageKwh: annualUsage, market,
+    meterType, currentProducts: [], annualUsageKwh: annualUsage, market,
     supplyStartDate: now.split('T')[0], balance: 0, createdAt: now, updatedAt: now,
   };
 
@@ -129,7 +142,15 @@ export default function NewQuotePage() {
               <label className="field-label">Customer Type *</label>
               <div className="flex gap-2">
                 {CUSTOMER_TYPES.map((t) => (
-                  <button key={t} onClick={() => setCustomerType(t)} style={toggleBtn(customerType === t)} className="capitalize">{t}</button>
+                  <button key={t} onClick={() => { setCustomerType(t); setMeterType(DEFAULT_METER_TYPE[t]); }} style={toggleBtn(customerType === t)} className="capitalize">{t}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="field-label">Meter Type *</label>
+              <div className="flex flex-wrap gap-2">
+                {METER_TYPES.map(({ value, label }) => (
+                  <button key={value} onClick={() => setMeterType(value)} style={toggleBtn(meterType === value)}>{label}</button>
                 ))}
               </div>
             </div>

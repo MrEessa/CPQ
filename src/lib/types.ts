@@ -186,7 +186,7 @@ export interface EligibilityResult {
 
 export type CustomerType = 'residential' | 'sme' | 'ic';
 export type CustomerStatus = 'active' | 'pending' | 'suspended' | 'closed';
-export type MeterType = 'smart' | 'traditional' | 'prepayment';
+export type MeterType = 'smart' | 'traditional' | 'prepayment' | 'hh';
 
 export interface Address {
   line1: string;

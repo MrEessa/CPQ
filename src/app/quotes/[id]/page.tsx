@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { ArrowLeft, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { getQuoteById, saveQuote } from '@/lib/data/quotes';
 import { advanceStatus, ALLOWED_TRANSITIONS } from '@/lib/quote-engine';
-import { calculateCost } from '@/lib/pricing-engine';
+import { calculateCostFromSnapshot } from '@/lib/pricing-engine';
 import { getProductById } from '@/lib/data/products';
 import Badge from '@/components/ui/Badge';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -124,54 +124,52 @@ export default function QuoteDetailPage({ params }: Props) {
       {/* Line items */}
       {quote.products.map((item) => {
         const product = getProductById(item.productId);
-        const bd = product ? calculateCost({ product, annualUsageKwh: quote.annualUsageKwh }) : null;
+        // Always calculate from the snapshot taken at quote time, not live product pricing
+        const bd = calculateCostFromSnapshot(item.pricingSnapshot, quote.annualUsageKwh);
         return (
           <Card key={item.productId}>
             <CardHeader>
               <div className="flex items-center gap-2">
                 <CardTitle>{item.productName}</CardTitle>
                 {product && <Badge variant={product.productType} />}
+                <span className="ml-1 rounded px-1.5 py-0.5 text-xs" style={{ background: 'var(--bg-elevated)', color: 'var(--text-tertiary)' }}>pricing locked at quote time</span>
               </div>
               <Link href={`/catalogue/${item.productId}`} className="table-link text-xs">View product →</Link>
             </CardHeader>
-            {bd ? (
-              <table className="w-full text-sm">
-                <tbody>
-                  {bd.standingChargeAnnual > 0 && (
-                    <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                      <td className="py-1.5" style={{ color: 'var(--text-secondary)' }}>
-                        Standing charge
-                        {item.pricingSnapshot.standingCharge !== undefined && (
-                          <span className="ml-1" style={{ color: 'var(--text-tertiary)' }}>({formatStandingCharge(item.pricingSnapshot.standingCharge)})</span>
-                        )}
-                      </td>
-                      <td className="py-1.5 text-right" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{formatCurrency(bd.standingChargeAnnual)}</td>
-                    </tr>
-                  )}
-                  {bd.rateLines.map((line) => (
-                    <tr key={line.label} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                      <td className="py-1.5" style={{ color: 'var(--text-secondary)' }}>
-                        {line.label}
-                        <span className="ml-1" style={{ color: 'var(--text-tertiary)' }}>({line.kwhUsed.toLocaleString()} kWh @ {formatRate(line.unitRate)})</span>
-                      </td>
-                      <td className="py-1.5 text-right" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{formatCurrency(line.cost)}</td>
-                    </tr>
-                  ))}
-                  {bd.leviesTotal > 0 && (
-                    <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                      <td className="py-1.5" style={{ color: 'var(--text-secondary)' }}>Levies</td>
-                      <td className="py-1.5 text-right" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{formatCurrency(bd.leviesTotal)}</td>
-                    </tr>
-                  )}
-                  <tr style={{ background: 'var(--bg-elevated)' }}>
-                    <td className="rounded-l px-1 py-1.5 font-medium" style={{ color: 'var(--text-primary)' }}>Subtotal (ex VAT)</td>
-                    <td className="rounded-r px-1 py-1.5 text-right font-semibold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{formatCurrency(bd.subtotal)}</td>
+            <table className="w-full text-sm">
+              <tbody>
+                {bd.standingChargeAnnual > 0 && (
+                  <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                    <td className="py-1.5" style={{ color: 'var(--text-secondary)' }}>
+                      Standing charge
+                      {item.pricingSnapshot.standingCharge !== undefined && (
+                        <span className="ml-1" style={{ color: 'var(--text-tertiary)' }}>({formatStandingCharge(item.pricingSnapshot.standingCharge)})</span>
+                      )}
+                    </td>
+                    <td className="py-1.5 text-right" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{formatCurrency(bd.standingChargeAnnual)}</td>
                   </tr>
-                </tbody>
-              </table>
-            ) : (
-              <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>Product no longer available.</p>
-            )}
+                )}
+                {bd.rateLines.map((line) => (
+                  <tr key={line.label} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                    <td className="py-1.5" style={{ color: 'var(--text-secondary)' }}>
+                      {line.label}
+                      <span className="ml-1" style={{ color: 'var(--text-tertiary)' }}>({line.kwhUsed.toLocaleString()} kWh @ {formatRate(line.unitRate)})</span>
+                    </td>
+                    <td className="py-1.5 text-right" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{formatCurrency(line.cost)}</td>
+                  </tr>
+                ))}
+                {bd.leviesTotal > 0 && (
+                  <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                    <td className="py-1.5" style={{ color: 'var(--text-secondary)' }}>Levies</td>
+                    <td className="py-1.5 text-right" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{formatCurrency(bd.leviesTotal)}</td>
+                  </tr>
+                )}
+                <tr style={{ background: 'var(--bg-elevated)' }}>
+                  <td className="rounded-l px-1 py-1.5 font-medium" style={{ color: 'var(--text-primary)' }}>Subtotal (ex VAT)</td>
+                  <td className="rounded-r px-1 py-1.5 text-right font-semibold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{formatCurrency(bd.subtotal)}</td>
+                </tr>
+              </tbody>
+            </table>
           </Card>
         );
       })}
