@@ -135,6 +135,7 @@ export interface Quote {
   customerType: CustomerType;
   products: QuoteLineItem[];
   annualUsageKwh: number;
+  annualExportKwh?: number;       // only set when quote includes an export tariff
   estimatedAnnualCost: number;
   totalWithVat: number;
   notes?: string;
@@ -156,6 +157,7 @@ export interface UsageProfile {
 export interface PricingInput {
   product: Product;
   annualUsageKwh: number;
+  annualExportKwh?: number;   // overrides annualUsageKwh for export-type products
   usageProfile?: UsageProfile;
 }
 
@@ -180,11 +182,19 @@ export interface CostBreakdown {
 export interface EligibilityResult {
   eligible: boolean;
   reasons: string[];
+  failedRules: EligibilityRule[];
 }
 
 // === Customer Management ======================================================
 
 export type CustomerType = 'residential' | 'sme' | 'ic';
+
+export interface DeviceOwnership {
+  hasEV?: boolean;
+  hasSolar?: boolean;
+  hasBattery?: boolean;
+  hasHeatPump?: boolean;
+}
 export type CustomerStatus = 'active' | 'pending' | 'suspended' | 'closed';
 export type MeterType = 'smart' | 'traditional' | 'prepayment' | 'hh';
 
@@ -216,6 +226,10 @@ export interface Customer {
   balance: number;             // £ — positive = credit, negative = debt
   directDebitAmount?: number;  // £/month
   directDebitDay?: number;     // day of month 1–28
+  hasEV?: boolean;
+  hasSolar?: boolean;
+  hasBattery?: boolean;
+  hasHeatPump?: boolean;
   createdAt: string;
   updatedAt: string;
 }

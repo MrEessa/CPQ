@@ -3,12 +3,13 @@
 import { useState } from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, ChevronDown, Pencil, X, Check } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Pencil, X, Check, CheckCircle2 } from 'lucide-react';
 import { getProductById, updateProductStatus, updateProductPricing } from '@/lib/data/products';
 import Badge from '@/components/ui/Badge';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
-import { formatDate, formatRate, formatStandingCharge } from '@/lib/utils';
-import { PricingStructure, ProductStatus } from '@/lib/types';
+import { formatDate, formatRate, formatStandingCharge, describeRule } from '@/lib/utils';
+import TouTimeline from '@/components/pricing/TouTimeline';
+import { Market, PricingStructure, ProductStatus } from '@/lib/types';
 
 const STATUS_TRANSITIONS: Record<ProductStatus, ProductStatus[]> = {
   draft:      ['active'],
@@ -16,29 +17,11 @@ const STATUS_TRANSITIONS: Record<ProductStatus, ProductStatus[]> = {
   deprecated: [],
 };
 
-// Token-based band colors for the TOU timeline
-const BAND_COLORS = [
-  'var(--color-primary)',
-  'var(--color-accent)',
-  'var(--color-success)',
-  'var(--color-danger)',
-  'var(--color-info)',
-  'var(--color-warning)',
-];
-
-function timeToMinutes(t: string): number {
-  const [h, m] = t.split(':').map(Number);
-  return h * 60 + m;
-}
-
-// Split a time window into one or two segments, handling midnight-crossing windows (e.g. 23:00→07:00).
-function getTimelineSegments(startTime: string, endTime: string): { start: number; end: number }[] {
-  const start = timeToMinutes(startTime);
-  const end = endTime === '24:00' ? 1440 : timeToMinutes(endTime);
-  if (end > start) return [{ start, end }];
-  // Midnight-crossing: render as two segments
-  return [{ start, end: 1440 }, { start: 0, end }];
-}
+const REGULATORY_NOTES: Record<string, string> = {
+  Ofgem: 'Office of Gas and Electricity Markets — Great Britain\'s energy regulator',
+  CRU: 'Commission for Regulation of Utilities — Ireland\'s energy regulator',
+  BNetzA: 'Bundesnetzagentur — Germany\'s Federal Network Agency',
+};
 
 interface PricingEditState {
   standingCharge: string;
@@ -269,39 +252,8 @@ export default function ProductDetailPage({ params }: Props) {
       {/* TOU timeline */}
       {isTOU && (
         <Card>
-          <CardHeader><CardTitle>Rate Timeline (24h)</CardTitle></CardHeader>
-          <div className="relative h-10 overflow-hidden rounded-md" style={{ background: 'var(--bg-elevated)' }}>
-            {product.pricingStructure.rates.map((rate, rateIdx) =>
-              (rate.timeWindows ?? []).flatMap((tw, twIdx) => {
-                if (!tw.daysOfWeek.includes(1)) return [];
-                return getTimelineSegments(tw.startTime, tw.endTime).map((seg, segIdx) => (
-                  <div
-                    key={`${rate.id}-${twIdx}-${segIdx}`}
-                    className="absolute top-0 h-full flex items-center justify-center overflow-hidden"
-                    style={{
-                      background: BAND_COLORS[rateIdx % BAND_COLORS.length],
-                      left: `${(seg.start / 1440) * 100}%`,
-                      width: `${((seg.end - seg.start) / 1440) * 100}%`,
-                    }}
-                    title={`${rate.label}: ${tw.startTime}–${tw.endTime}`}
-                  >
-                    <span className="truncate px-1 text-xs font-medium" style={{ color: '#fff' }}>{rate.label}</span>
-                  </div>
-                ));
-              }),
-            )}
-          </div>
-          <div className="mt-1 flex justify-between text-xs" style={{ color: 'var(--text-tertiary)' }}>
-            {['00:00', '06:00', '12:00', '18:00', '24:00'].map((t) => <span key={t}>{t}</span>)}
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {product.pricingStructure.rates.map((rate, i) => (
-              <div key={rate.id} className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                <div className="h-2.5 w-2.5 rounded-sm" style={{ background: BAND_COLORS[i % BAND_COLORS.length] }} />
-                {rate.label} — {formatRate(rate.unitRate)}
-              </div>
-            ))}
-          </div>
+          <CardHeader><CardTitle>Rate Timeline (24h — typical weekday)</CardTitle></CardHeader>
+          <TouTimeline rates={product.pricingStructure.rates} />
         </Card>
       )}
 
@@ -309,16 +261,51 @@ export default function ProductDetailPage({ params }: Props) {
       {product.eligibilityRules.length > 0 && (
         <Card>
           <CardHeader><CardTitle>Eligibility Rules</CardTitle></CardHeader>
-          <ul className="space-y-1.5">
+          <ul className="space-y-2">
             {product.eligibilityRules.map((rule) => (
-              <li key={rule.id} className="flex items-start gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: 'var(--color-primary)', marginTop: 6 }} />
-                {rule.description}
+              <li key={rule.id} className="flex items-start gap-2 text-sm">
+                <CheckCircle2 size={14} className="shrink-0 mt-0.5" style={{ color: 'var(--color-success)', marginTop: 3 }} />
+                <span style={{ color: 'var(--text-primary)' }}>{describeRule(rule)}</span>
               </li>
             ))}
           </ul>
         </Card>
       )}
+
+      {/* Market configuration */}
+      <Card>
+        <CardHeader><CardTitle>Market Configuration</CardTitle></CardHeader>
+        <div className="space-y-4">
+          {product.market.map((m: Market) => (
+            <div key={m.code}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="rounded px-2 py-0.5 text-xs font-semibold" style={{ background: 'var(--color-primary-subtle)', color: 'var(--color-primary-text)' }}>{m.code}</span>
+                <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{m.name}</span>
+              </div>
+              <dl className="space-y-1.5 text-sm">
+                {[
+                  ['Currency', m.currency],
+                  ['VAT rate', `${m.vatRate}%`],
+                  ['Regulatory scheme', m.regulatoryScheme],
+                ].map(([label, value]) => (
+                  <div key={label} className="flex justify-between">
+                    <dt style={{ color: 'var(--text-secondary)' }}>{label}</dt>
+                    <dd className="font-medium" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>{value}</dd>
+                  </div>
+                ))}
+              </dl>
+              {REGULATORY_NOTES[m.regulatoryScheme] && (
+                <p className="mt-2 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                  {REGULATORY_NOTES[m.regulatoryScheme]}
+                </p>
+              )}
+            </div>
+          ))}
+          <p className="text-xs pt-2" style={{ color: 'var(--text-tertiary)', borderTop: '1px solid var(--border-subtle)' }}>
+            Products are market-configured, not market-hardcoded. Pricing logic, currency formatting, and VAT calculation adapt to the market config — no bespoke development required per market.
+          </p>
+        </div>
+      </Card>
 
       {/* Version history */}
       <Card>

@@ -331,6 +331,17 @@ export default function AnalyticsPage() {
               </tfoot>
             </table>
           </Card>
+          <div className="flex justify-end">
+            <a
+              href="/finance?tab=margin"
+              className="text-xs font-medium"
+              style={{ color: 'var(--color-primary-text)', textDecoration: 'none' }}
+              onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.textDecoration = 'underline')}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.textDecoration = 'none')}
+            >
+              View full margin model → Financial Control
+            </a>
+          </div>
         </div>
       )}
     </div>

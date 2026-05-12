@@ -326,14 +326,14 @@ export const SEED_PRODUCTS: Product[] = [
     versionHistory: [],
   },
 
-  // 6. Flat rate electricity — IE market, draft
+  // 6. Flat rate electricity — IE market
   {
     id: 'prod-006',
     name: 'IEFlatElec-v1',
     description: 'Standard flat rate electricity tariff for the Irish market. Regulatory rates apply under CRU guidelines.',
     productType: 'flat_rate',
     fuelType: 'electricity',
-    status: 'draft',
+    status: 'active',
     version: 1,
     market: [IE_MARKET],
     eligibilityRules: [
@@ -360,6 +360,157 @@ export const SEED_PRODUCTS: Product[] = [
     effectiveFrom: '2025-01-01',
     createdAt: '2024-11-01T09:00:00Z',
     updatedAt: '2024-11-15T12:00:00Z',
+    versionHistory: [],
+  },
+
+  // 7. Dynamic EV tariff — GB (smart meter + EV required)
+  {
+    id: 'prod-007',
+    name: 'AgileEV-v1',
+    description: 'Dynamic overnight electricity tariff optimised for EV owners. Super off-peak rate for overnight charging, with standard and peak bands during the day.',
+    productType: 'dynamic',
+    fuelType: 'electricity',
+    status: 'active',
+    version: 1,
+    market: [GB_MARKET],
+    eligibilityRules: [
+      {
+        id: 'er-007-1',
+        field: 'meterType',
+        operator: 'eq',
+        value: 'smart',
+        description: 'Requires a smart meter',
+      },
+      {
+        id: 'er-007-2',
+        field: 'hasEV',
+        operator: 'eq',
+        value: true,
+        description: 'Requires EV ownership',
+      },
+    ],
+    pricingStructure: {
+      currency: 'GBP',
+      standingCharge: 45.00,
+      rates: [
+        {
+          id: 'rate-007-1',
+          label: 'Super Off-Peak',
+          unitRate: 8.0,
+          timeWindows: [
+            { daysOfWeek: [0, 1, 2, 3, 4, 5, 6], startTime: '00:00', endTime: '07:00' },
+          ],
+        },
+        {
+          id: 'rate-007-2',
+          label: 'Standard',
+          unitRate: 24.5,
+          timeWindows: [
+            { daysOfWeek: [0, 1, 2, 3, 4, 5, 6], startTime: '07:00', endTime: '16:00' },
+            { daysOfWeek: [0, 1, 2, 3, 4, 5, 6], startTime: '19:00', endTime: '24:00' },
+          ],
+        },
+        {
+          id: 'rate-007-3',
+          label: 'Peak',
+          unitRate: 38.0,
+          timeWindows: [
+            { daysOfWeek: [0, 1, 2, 3, 4, 5, 6], startTime: '16:00', endTime: '19:00' },
+          ],
+        },
+      ],
+      vatRate: 5,
+      levies: [
+        { name: 'Renewables Obligation', ratePerKwh: 1.96 },
+      ],
+    },
+    effectiveFrom: '2025-03-01',
+    createdAt: '2025-02-01T10:00:00Z',
+    updatedAt: '2025-02-15T14:00:00Z',
+    versionHistory: [],
+  },
+
+  // 8. Solar export tariff — GB (SEG-style, hasSolar required)
+  {
+    id: 'prod-008',
+    name: 'SolarExport-v2',
+    description: 'Smart Export Guarantee (SEG) tariff for solar panel owners. Earn a fixed rate for every unit of electricity exported back to the grid.',
+    productType: 'export',
+    fuelType: 'electricity',
+    status: 'active',
+    version: 2,
+    market: [GB_MARKET],
+    eligibilityRules: [
+      {
+        id: 'er-008-1',
+        field: 'hasSolar',
+        operator: 'eq',
+        value: true,
+        description: 'Requires solar panel installation',
+      },
+    ],
+    pricingStructure: {
+      currency: 'GBP',
+      rates: [
+        {
+          id: 'rate-008-1',
+          label: 'Export Rate',
+          unitRate: 15.0,
+        },
+      ],
+      vatRate: 0,
+    },
+    effectiveFrom: '2025-01-01',
+    createdAt: '2024-12-01T09:00:00Z',
+    updatedAt: '2025-01-05T11:00:00Z',
+    versionHistory: [],
+  },
+
+  // 9. Time-of-use electricity — IE market
+  {
+    id: 'prod-009',
+    name: 'IETOUElec-v1',
+    description: 'Time-of-use electricity tariff for the Irish market. Cheaper night rates to reward off-peak usage. CRU regulated.',
+    productType: 'time_of_use',
+    fuelType: 'electricity',
+    status: 'active',
+    version: 1,
+    market: [IE_MARKET],
+    eligibilityRules: [
+      {
+        id: 'er-009-1',
+        field: 'customerType',
+        operator: 'in',
+        value: ['residential', 'sme'],
+        description: 'Available to residential and SME customers',
+      },
+    ],
+    pricingStructure: {
+      currency: 'EUR',
+      standingCharge: 55.00,
+      rates: [
+        {
+          id: 'rate-009-1',
+          label: 'Day Rate',
+          unitRate: 28.5,
+          timeWindows: [
+            { daysOfWeek: [0, 1, 2, 3, 4, 5, 6], startTime: '07:00', endTime: '23:00' },
+          ],
+        },
+        {
+          id: 'rate-009-2',
+          label: 'Night Rate',
+          unitRate: 14.0,
+          timeWindows: [
+            { daysOfWeek: [0, 1, 2, 3, 4, 5, 6], startTime: '23:00', endTime: '07:00' },
+          ],
+        },
+      ],
+      vatRate: 9,
+    },
+    effectiveFrom: '2025-04-01',
+    createdAt: '2025-03-01T10:00:00Z',
+    updatedAt: '2025-03-15T11:00:00Z',
     versionHistory: [],
   },
 ];

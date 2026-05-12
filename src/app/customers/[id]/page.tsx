@@ -3,17 +3,21 @@
 import { useState } from 'react';
 import { notFound, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, MapPin, CreditCard, ClipboardList, MessageSquare, FileText, StickyNote, AlertCircle } from 'lucide-react';
+import { ArrowLeft, MapPin, CreditCard, ClipboardList, MessageSquare, FileText, StickyNote, AlertCircle, ShieldCheck, CheckCircle2, XCircle } from 'lucide-react';
 import { getCustomerById, updateCustomer } from '@/lib/data/customers';
 import { getBillsForCustomer } from '@/lib/data/bills';
 import { getCommunicationsForCustomer, addCommunication } from '@/lib/data/communications';
 import { getTasksForCustomer, addTask } from '@/lib/data/tasks';
+import { getProducts } from '@/lib/data/products';
+import { checkEligibility } from '@/lib/quote-engine';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import Modal from '@/components/ui/Modal';
-import { formatCurrency, formatDate, formatDateTime, formatUsage } from '@/lib/utils';
+import { formatCurrency, formatDate, formatDateTime, formatUsage, describeRule } from '@/lib/utils';
 import { CustomerStatus, CommunicationChannel, TaskPriority, CustomerType } from '@/lib/types';
+
+const MARKET_CURRENCY: Record<string, string> = { GB: 'GBP', IE: 'EUR' };
 
 type Tab = 'overview' | 'billing' | 'communications' | 'tasks' | 'documents' | 'notes';
 
@@ -57,6 +61,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
   const [, forceUpdate]           = useState(0);
   const [showCommModal, setShowCommModal] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showEligibilityModal, setShowEligibilityModal] = useState(false);
   const [commForm, setCommForm]   = useState<CommForm>(EMPTY_COMM);
   const [taskForm, setTaskForm]   = useState<TaskForm>(EMPTY_TASK);
 
@@ -84,6 +89,9 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
 
   const openTasks       = tasks.filter((t) => t.status !== 'closed').length;
   const unpaidBillTotal = bills.filter((b) => b.status !== 'paid').reduce((sum, b) => sum + (b.amountDue - b.amountPaid), 0);
+  const currency = MARKET_CURRENCY[customer.market] ?? 'GBP';
+  const activeProducts = getProducts({ status: ['active'], market: customer.market });
+  const eligibilityChecks = activeProducts.map((p) => ({ product: p, result: checkEligibility(p, customer) }));
 
   return (
     <div className="space-y-5">
@@ -128,6 +136,12 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
           <div className="pt-4">
             {/* Overview tab */}
             {activeTab === 'overview' && (
+              <div className="space-y-4">
+              <div className="flex justify-end">
+                <Button size="sm" variant="secondary" onClick={() => setShowEligibilityModal(true)}>
+                  <ShieldCheck size={13} /> Check product eligibility
+                </Button>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 {[
                   { title: 'Supply Address', addr: customer.supplyAddress },
@@ -163,6 +177,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
                   </dl>
                 </Card>
               </div>
+              </div>
             )}
 
             {/* Billing tab */}
@@ -179,7 +194,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
                           <td className="cell-primary cell-mono"><Link href={`/billing/${b.id}`} className="table-link">{b.reference}</Link></td>
                           <td className="text-xs">{formatDate(b.periodFrom)} – {formatDate(b.periodTo)}</td>
                           <td className="text-right cell-mono">{b.usageKwh.toLocaleString()} kWh</td>
-                          <td className="text-right cell-mono cell-primary font-medium">{formatCurrency(b.amountDue)}</td>
+                          <td className="text-right cell-mono cell-primary font-medium">{formatCurrency(b.amountDue, currency)}</td>
                           <td><Badge variant={b.status} /></td>
                           <td>{formatDate(b.dueDate)}</td>
                         </tr>
@@ -273,14 +288,14 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
           <Card>
             <CardHeader><CardTitle>Account Balance</CardTitle></CardHeader>
             <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.5rem', color: customer.balance > 0 ? 'var(--color-success-text)' : customer.balance < 0 ? 'var(--color-danger-text)' : 'var(--text-primary)' }}>
-              {formatCurrency(Math.abs(customer.balance))}
+              {formatCurrency(Math.abs(customer.balance), currency)}
               <span className="ml-1 text-sm font-normal" style={{ fontFamily: 'var(--font-body)' }}>
                 {customer.balance > 0 ? 'CR' : customer.balance < 0 ? 'DR' : ''}
               </span>
             </p>
             {unpaidBillTotal > 0 && (
               <div className="mt-2 flex items-center gap-1.5 rounded-md px-2.5 py-2 text-xs" style={{ background: 'var(--color-danger-subtle)', color: 'var(--color-danger-text)' }}>
-                <AlertCircle size={13} />{formatCurrency(unpaidBillTotal)} outstanding on bills
+                <AlertCircle size={13} />{formatCurrency(unpaidBillTotal, currency)} outstanding on bills
               </div>
             )}
           </Card>
@@ -320,6 +335,58 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
           </Card>
         </div>
       </div>
+
+      {/* Product Eligibility Modal */}
+      <Modal open={showEligibilityModal} onClose={() => setShowEligibilityModal(false)} title={`Product Eligibility — ${customer.name}`}>
+        <div className="space-y-4" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+          {eligibilityChecks.length === 0 && (
+            <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>No active products in the {customer.market} market.</p>
+          )}
+
+          {/* Eligible products */}
+          {eligibilityChecks.filter((e) => e.result.eligible).length > 0 && (
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-success-text)' }}>
+                Eligible ({eligibilityChecks.filter((e) => e.result.eligible).length})
+              </p>
+              <div className="space-y-1.5">
+                {eligibilityChecks.filter((e) => e.result.eligible).map(({ product }) => (
+                  <div key={product.id} className="flex items-center gap-2 rounded-md px-3 py-2 text-sm" style={{ background: 'var(--color-success-subtle)', border: '1px solid var(--color-success)' }}>
+                    <CheckCircle2 size={13} className="shrink-0" style={{ color: 'var(--color-success)' }} />
+                    <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{product.name}</span>
+                    <span style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem' }}>({product.productType.replace(/_/g, ' ')})</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Ineligible products */}
+          {eligibilityChecks.filter((e) => !e.result.eligible).length > 0 && (
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-danger-text)' }}>
+                Ineligible ({eligibilityChecks.filter((e) => !e.result.eligible).length})
+              </p>
+              <div className="space-y-2">
+                {eligibilityChecks.filter((e) => !e.result.eligible).map(({ product, result }) => (
+                  <div key={product.id} className="rounded-md px-3 py-2" style={{ background: 'var(--color-danger-subtle)', border: '1px solid var(--color-danger)' }}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <XCircle size={13} style={{ color: 'var(--color-danger)' }} />
+                      <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{product.name}</span>
+                      <span style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem' }}>({product.productType.replace(/_/g, ' ')})</span>
+                    </div>
+                    <ul className="ml-5 space-y-0.5">
+                      {result.failedRules.map((rule) => (
+                        <li key={rule.id} className="text-xs" style={{ color: 'var(--text-secondary)' }}>• {describeRule(rule)}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
 
       {/* Send Communication Modal */}
       <Modal open={showCommModal} onClose={() => { setShowCommModal(false); setCommForm(EMPTY_COMM); }} title="Send Communication">

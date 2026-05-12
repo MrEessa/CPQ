@@ -82,7 +82,13 @@ export function calculateCostFromSnapshot(
 }
 
 export function calculateCost(input: PricingInput): CostBreakdown {
-  const { product, annualUsageKwh, usageProfile } = input;
+  const { product, annualUsageKwh, annualExportKwh, usageProfile } = input;
+
+  // Export tariffs are priced on export volume, not consumption
+  const effectiveUsageKwh =
+    product.productType === 'export' && annualExportKwh !== undefined
+      ? annualExportKwh
+      : annualUsageKwh;
 
   const peakPercent = usageProfile?.peakPercent ?? DEFAULT_PEAK_PERCENT;
   const offPeakPercent = usageProfile?.offPeakPercent ?? DEFAULT_OFF_PEAK_PERCENT;
@@ -94,21 +100,19 @@ export function calculateCost(input: PricingInput): CostBreakdown {
       .map(resolveProduct)
       .filter((p): p is Product => p !== undefined);
 
-    const componentBreakdowns = components.map((component) =>
-      buildBreakdown(
-        component.pricingStructure,
-        annualUsageKwh,
-        peakPercent,
-        offPeakPercent,
-        nightPercent,
-      ),
-    );
+    const componentBreakdowns = components.map((component) => {
+      const componentUsage =
+        component.productType === 'export' && annualExportKwh !== undefined
+          ? annualExportKwh
+          : annualUsageKwh;
+      return buildBreakdown(component.pricingStructure, componentUsage, peakPercent, offPeakPercent, nightPercent);
+    });
 
     if (componentBreakdowns.length === 0) {
       // Fall back to the bundle's own pricing structure
       return buildBreakdown(
         product.pricingStructure,
-        annualUsageKwh,
+        effectiveUsageKwh,
         peakPercent,
         offPeakPercent,
         nightPercent,
@@ -136,7 +140,7 @@ export function calculateCost(input: PricingInput): CostBreakdown {
 
   return buildBreakdown(
     product.pricingStructure,
-    annualUsageKwh,
+    effectiveUsageKwh,
     peakPercent,
     offPeakPercent,
     nightPercent,

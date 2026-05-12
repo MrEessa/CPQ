@@ -124,8 +124,13 @@ export default function QuoteDetailPage({ params }: Props) {
       {/* Line items */}
       {quote.products.map((item) => {
         const product = getProductById(item.productId);
+        // Export tariffs are priced on export volume; use the stored export figure if available
+        const usageForItem =
+          product?.productType === 'export' && quote.annualExportKwh !== undefined
+            ? quote.annualExportKwh
+            : quote.annualUsageKwh;
         // Always calculate from the snapshot taken at quote time, not live product pricing
-        const bd = calculateCostFromSnapshot(item.pricingSnapshot, quote.annualUsageKwh);
+        const bd = calculateCostFromSnapshot(item.pricingSnapshot, usageForItem);
         return (
           <Card key={item.productId}>
             <CardHeader>

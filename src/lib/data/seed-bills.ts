@@ -106,6 +106,14 @@ const P005: PricingStructure = {
   levies: [{ name: 'Renewables Obligation', ratePerKwh: 1.96 }],
 };
 
+// prod-006 IEFlatElec-v1
+const P006: PricingStructure = {
+  currency: 'EUR',
+  standingCharge: 55.00,
+  rates: [{ id: 'rate-006-1', label: 'Unit Rate', unitRate: 32.8 }],
+  vatRate: 13.5,
+};
+
 // ─── Bill factory ─────────────────────────────────────────────────────────────
 
 type BillStatusInput = 'paid' | 'overdue' | 'issued' | 'disputed';
@@ -500,5 +508,29 @@ export const SEED_BILLS: Bill[] = [
       paidAt: '2026-04-18T00:00:00Z',
       reference: 'CHAPS-20260418-012',
     }],
+  }),
+
+  // ── cust-013 Galway Precision Engineering (prod-006, 25000 kWh/yr, ~2083 kWh/month) ─
+  // EUR bills — demonstrates currency-aware rendering
+  makeBill({
+    id: 'bill-041', customerId: 'cust-013', productId: 'prod-006',
+    ref: 'BILL-2026-041', status: 'paid',
+    periodFrom: '2026-02-01', periodTo: '2026-02-28', daysInPeriod: 28, usageKwh: 1917,
+    pricing: P006, issuedAt: '2026-03-02T08:00:00Z', dueDate: '2026-03-16',
+    createdAt: '2026-03-02T08:00:00Z',
+  }),
+  makeBill({
+    id: 'bill-042', customerId: 'cust-013', productId: 'prod-006',
+    ref: 'BILL-2026-042', status: 'paid',
+    periodFrom: '2026-03-01', periodTo: '2026-03-31', daysInPeriod: 31, usageKwh: 2083,
+    pricing: P006, issuedAt: '2026-04-02T08:00:00Z', dueDate: '2026-04-16',
+    createdAt: '2026-04-02T08:00:00Z',
+  }),
+  makeBill({
+    id: 'bill-043', customerId: 'cust-013', productId: 'prod-006',
+    ref: 'BILL-2026-043', status: 'issued',
+    periodFrom: '2026-04-01', periodTo: '2026-04-30', daysInPeriod: 30, usageKwh: 2083,
+    pricing: P006, issuedAt: '2026-05-02T08:00:00Z', dueDate: '2026-05-16',
+    createdAt: '2026-05-02T08:00:00Z',
   }),
 ];

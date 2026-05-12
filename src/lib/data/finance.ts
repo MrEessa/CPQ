@@ -101,10 +101,17 @@ export function appendAuditEntry(
 
 // Reads SEED_BILLS directly (not the live store) so finance.ts avoids a
 // circular dependency with bills.ts. Aggregate analytics are seed-based.
-export function getMarginSummary(): MarginSummary[] {
+// Accepts an optional wholesaleCostPerKwh override for what-if modelling.
+export function getMarginSummary(wholesaleCostPerKwh?: number): MarginSummary[] {
+  const effectiveWholesaleCost = wholesaleCostPerKwh ?? WHOLESALE_COST_PER_KWH;
   const byProduct = new Map<string, { totalRevenue: number; totalUsageKwh: number }>();
 
-  for (const bill of SEED_BILLS) {
+  // Only include GBP bills in the margin model (EUR bills from IE products
+  // have a different pricing basis and shouldn't be mixed into the GBP margin view)
+  for (const bill of SEED_BILLS.filter((b) => b.breakdown.rateLines.length > 0)) {
+    const product = getProductById(bill.productId);
+    if (product?.pricingStructure.currency !== 'GBP') continue;
+
     const existing = byProduct.get(bill.productId) ?? { totalRevenue: 0, totalUsageKwh: 0 };
     byProduct.set(bill.productId, {
       totalRevenue: existing.totalRevenue + bill.breakdown.total,
@@ -114,7 +121,7 @@ export function getMarginSummary(): MarginSummary[] {
 
   return Array.from(byProduct.entries()).map(([productId, agg]) => {
     const product = getProductById(productId);
-    const totalWholesaleCost = agg.totalUsageKwh * WHOLESALE_COST_PER_KWH;
+    const totalWholesaleCost = agg.totalUsageKwh * effectiveWholesaleCost;
     const grossMargin = agg.totalRevenue - totalWholesaleCost;
     const grossMarginPercent =
       agg.totalRevenue > 0 ? (grossMargin / agg.totalRevenue) * 100 : 0;

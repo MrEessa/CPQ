@@ -7,6 +7,7 @@ import {
   QuoteLineItem,
   QuoteStatus,
   StatusEvent,
+  UsageProfile,
 } from '@/lib/types';
 import { calculateCost } from '@/lib/pricing-engine';
 
@@ -54,16 +55,19 @@ export function checkEligibility(
   customer: Customer,
 ): EligibilityResult {
   const failedReasons: string[] = [];
+  const failedRules: EligibilityRule[] = [];
 
   for (const rule of product.eligibilityRules) {
     if (!evaluateRule(rule, customer)) {
       failedReasons.push(rule.description);
+      failedRules.push(rule);
     }
   }
 
   return {
     eligible: failedReasons.length === 0,
     reasons: failedReasons,
+    failedRules,
   };
 }
 
@@ -89,11 +93,13 @@ export function createQuote(
   customer: Customer,
   products: Product[],
   usageKwh: number,
+  usageProfile?: UsageProfile,
+  annualExportKwh?: number,
 ): Quote {
   const now = new Date().toISOString();
 
   const lineItems: QuoteLineItem[] = products.map((product) => {
-    const breakdown = calculateCost({ product, annualUsageKwh: usageKwh });
+    const breakdown = calculateCost({ product, annualUsageKwh: usageKwh, annualExportKwh, usageProfile });
     return {
       productId: product.id,
       productName: product.name,
@@ -122,6 +128,7 @@ export function createQuote(
     customerType: customer.customerType,
     products: lineItems,
     annualUsageKwh: usageKwh,
+    ...(annualExportKwh !== undefined ? { annualExportKwh } : {}),
     estimatedAnnualCost,
     totalWithVat,
     validUntil: validUntilDefault(),
