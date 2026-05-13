@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, CheckCircle, XCircle, Zap, Car, Sun, Battery, Thermometer } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle, XCircle, Zap, Car, Sun, Battery, Thermometer, Sparkles, TrendingDown, DollarSign } from 'lucide-react';
 import { getProducts } from '@/lib/data/products';
 import { saveQuote } from '@/lib/data/quotes';
 import { createQuote, checkEligibility, advanceStatus } from '@/lib/quote-engine';
 import { calculateCost } from '@/lib/pricing-engine';
+import { getAIRecommendations, AIRecommendation } from '@/lib/ai-recommendations';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -91,6 +92,128 @@ function currencyForProduct(p: Product): string {
   return p.pricingStructure.currency ?? 'GBP';
 }
 
+// ── AI Recommendations Panel ─────────────────────────────────────────────────
+
+function AIRecommendationsPanel({
+  recommendations,
+  allProducts,
+  selectedProductIds,
+  onAdd,
+}: {
+  recommendations: AIRecommendation[];
+  allProducts: Product[];
+  selectedProductIds: string[];
+  onAdd: (id: string) => void;
+}) {
+  if (recommendations.length === 0) return null;
+
+  return (
+    <div
+      className="rounded-lg p-4"
+      style={{
+        background: 'var(--bg-elevated)',
+        border: '1px dashed var(--color-primary)',
+      }}
+    >
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-3">
+        <Sparkles size={14} style={{ color: 'var(--color-primary)' }} />
+        <span className="text-sm font-semibold" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
+          AI-Assisted Match
+        </span>
+        <span
+          className="text-xs px-1.5 py-0.5 rounded"
+          style={{ background: 'var(--color-primary-subtle)', color: 'var(--color-primary-text)', fontWeight: 500 }}
+        >
+          beta
+        </span>
+        <span className="ml-auto text-xs" style={{ color: 'var(--text-tertiary)' }}>
+          Based on customer profile and usage pattern
+        </span>
+      </div>
+
+      <div className="space-y-2.5">
+        {recommendations.map((rec) => {
+          const product = allProducts.find((p) => p.id === rec.productId);
+          if (!product) return null;
+          const isSelected = selectedProductIds.includes(rec.productId);
+          const isExport = product.productType === 'export';
+
+          return (
+            <div
+              key={rec.productId}
+              className="rounded-md p-3"
+              style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                    style={{
+                      background: rec.confidence === 'high' ? 'var(--color-success-subtle)' : 'var(--color-warning-subtle)',
+                      color: rec.confidence === 'high' ? 'var(--color-success-text)' : 'var(--color-warning-text)',
+                    }}
+                  >
+                    {rec.confidence === 'high' ? 'High match' : 'Good match'}
+                  </span>
+                  <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{product.name}</span>
+                  <Badge variant={product.productType} />
+                  {isExport && (
+                    <span className="flex items-center gap-0.5 text-xs font-medium" style={{ color: 'var(--color-success-text)' }}>
+                      <DollarSign size={11} /> income
+                    </span>
+                  )}
+                </div>
+                {isSelected ? (
+                  <span className="shrink-0 text-xs font-medium" style={{ color: 'var(--color-success-text)' }}>✓ Added</span>
+                ) : (
+                  <button
+                    onClick={() => onAdd(rec.productId)}
+                    className="shrink-0 text-xs font-medium"
+                    style={{
+                      color: 'var(--color-primary-text)',
+                      background: 'var(--color-primary-subtle)',
+                      border: '1px solid var(--color-primary)',
+                      borderRadius: 4,
+                      padding: '2px 10px',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    + Add to quote
+                  </button>
+                )}
+              </div>
+
+              <p className="mt-1.5 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                {rec.reason}
+              </p>
+
+              {rec.estimatedSavingVsFlat !== undefined && rec.estimatedSavingVsFlat > 0 && (
+                <div className="mt-1.5 flex items-center gap-1 text-xs" style={{ color: 'var(--color-success-text)' }}>
+                  <TrendingDown size={11} />
+                  <span className="font-medium">Estimated £{rec.estimatedSavingVsFlat.toFixed(0)}/yr saving vs flat rate</span>
+                </div>
+              )}
+
+              <ul className="mt-1.5 space-y-0.5">
+                {rec.detailLines.map((line, i) => (
+                  <li key={i} className="flex items-start gap-1.5 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                    <span className="shrink-0 mt-0.5" style={{ color: 'var(--color-primary)' }}>•</span>
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
+
 export default function NewQuotePage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
@@ -138,22 +261,29 @@ export default function NewQuotePage() {
     ...(isSmart ? { hasEV, hasSolar, hasBattery, hasHeatPump } : {}),
   };
 
+  const allProducts = getProducts({});
   const activeProducts = getProducts({ status: ['active'], market });
   const selectedProducts = activeProducts.filter((p) => selectedProductIds.includes(p.id));
 
   const eligibilityResults = activeProducts.map((p) => ({ product: p, result: checkEligibility(p, customer) }));
-  const eligibleCount = eligibilityResults.filter((r) => r.result.eligible).length;
+  const eligibleProducts = eligibilityResults.filter((r) => r.result.eligible).map((r) => r.product);
+  const eligibleCount = eligibleProducts.length;
   const ineligibleCount = eligibilityResults.length - eligibleCount;
+
+  const recommendations = getAIRecommendations(
+    customer,
+    eligibleProducts,
+    allProducts,
+    annualUsage,
+    usageProfile,
+    isSmart && hasSolar ? annualExportKwh : undefined,
+  );
 
   function toggleProduct(productId: string) {
     setSelectedProductIds((prev) => prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId]);
   }
 
   const exportKwh = hasSolar ? annualExportKwh : undefined;
-
-  function liveEstimate(products: Product[]): number {
-    return products.reduce((sum, p) => sum + calculateCost({ product: p, annualUsageKwh: annualUsage, annualExportKwh: exportKwh, usageProfile }).subtotal, 0);
-  }
 
   function handleSaveDraft() {
     const quote = createQuote(customer, selectedProducts, annualUsage, usageProfile, exportKwh);
@@ -169,6 +299,20 @@ export default function NewQuotePage() {
 
   const step1Valid = customerName.trim().length > 0 && annualUsage > 0 && (!isSmart || profileValid);
   const step2Valid = selectedProductIds.length > 0;
+
+  // Net cost summary for mixed import + export selections
+  function netCostSummary() {
+    const importProducts = selectedProducts.filter((p) => p.productType !== 'export');
+    const exportProducts = selectedProducts.filter((p) => p.productType === 'export');
+    const importCost = importProducts.reduce(
+      (sum, p) => sum + calculateCost({ product: p, annualUsageKwh: annualUsage, annualExportKwh: exportKwh, usageProfile }).subtotal, 0,
+    );
+    const exportIncome = exportProducts.reduce(
+      (sum, p) => sum + calculateCost({ product: p, annualUsageKwh: annualUsage, annualExportKwh: exportKwh, usageProfile }).subtotal, 0,
+    );
+    const currency = importProducts[0] ? currencyForProduct(importProducts[0]) : 'GBP';
+    return { importCost, exportIncome, net: importCost - exportIncome, hasExport: exportProducts.length > 0, currency };
+  }
 
   return (
     <div className="w-full max-w-3xl space-y-5">
@@ -324,6 +468,14 @@ export default function NewQuotePage() {
             {ineligibleCount > 0 && <> <span style={{ opacity: 0.8 }}>{ineligibleCount} {ineligibleCount === 1 ? 'product is' : 'products are'} unavailable — see details below.</span></>}
           </div>
 
+          {/* AI Recommendations Panel */}
+          <AIRecommendationsPanel
+            recommendations={recommendations}
+            allProducts={activeProducts}
+            selectedProductIds={selectedProductIds}
+            onAdd={toggleProduct}
+          />
+
           {activeProducts.length === 0 && (
             <Card><p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>No active products available for the {market} market.</p></Card>
           )}
@@ -333,7 +485,10 @@ export default function NewQuotePage() {
             const selected = selectedProductIds.includes(product.id);
             const breakdown = selected ? calculateCost({ product, annualUsageKwh: annualUsage, annualExportKwh: exportKwh, usageProfile }) : null;
             const isTOU = product.productType === 'time_of_use' || product.productType === 'dynamic';
+            const isExport = product.productType === 'export';
+            const isBundle = product.productType === 'bundled';
             const currency = currencyForProduct(product);
+            const isAIRecommended = recommendations.some((r) => r.productId === product.id);
 
             if (!eligibility.eligible) {
               return (
@@ -381,10 +536,18 @@ export default function NewQuotePage() {
                 key={product.id}
                 className="rounded-lg p-4 transition-all"
                 style={{
-                  border: selected ? `1px solid var(--color-primary)` : `1px solid var(--border-default)`,
-                  background: selected ? 'var(--color-primary-subtle)' : 'var(--bg-surface)',
+                  border: selected
+                    ? `1px solid ${isExport ? 'var(--color-success)' : 'var(--color-primary)'}`
+                    : isAIRecommended
+                    ? '1px solid var(--color-primary)'
+                    : '1px solid var(--border-default)',
+                  background: selected
+                    ? (isExport ? 'var(--color-success-subtle)' : 'var(--color-primary-subtle)')
+                    : 'var(--bg-surface)',
                   cursor: 'pointer',
-                  boxShadow: selected ? `0 0 0 1px var(--color-primary)` : 'none',
+                  boxShadow: selected
+                    ? `0 0 0 1px ${isExport ? 'var(--color-success)' : 'var(--color-primary)'}`
+                    : 'none',
                 }}
                 onClick={() => toggleProduct(product.id)}
               >
@@ -392,18 +555,41 @@ export default function NewQuotePage() {
                   <div className="flex items-center gap-2">
                     <input type="checkbox" checked={selected} readOnly className="mt-0.5" />
                     <div>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{product.name}</span>
                         <Badge variant={product.productType} />
+                        {isBundle && (
+                          <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'var(--bg-elevated)', color: 'var(--text-tertiary)', border: '1px solid var(--border-subtle)' }}>
+                            Electricity + Gas
+                          </span>
+                        )}
+                        {isExport && (
+                          <span className="flex items-center gap-0.5 text-xs font-medium" style={{ color: 'var(--color-success-text)' }}>
+                            <DollarSign size={11} /> earns income
+                          </span>
+                        )}
+                        {isAIRecommended && !selected && (
+                          <span className="flex items-center gap-0.5 text-xs font-medium" style={{ color: 'var(--color-primary-text)' }}>
+                            <Sparkles size={10} /> AI Recommended
+                          </span>
+                        )}
                       </div>
                       <p className="mt-0.5 text-xs" style={{ color: 'var(--text-secondary)' }}>{product.description}</p>
                     </div>
                   </div>
                   {breakdown && (
-                    <div className="text-right">
-                      <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Est. annual (ex VAT)</p>
-                      <p className="font-semibold" style={{ color: 'var(--color-primary-text)', fontFamily: 'var(--font-mono)' }}>
-                        {formatCurrency(breakdown.subtotal, currency)}
+                    <div className="text-right shrink-0 ml-2">
+                      <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                        {isExport ? 'Est. annual income' : 'Est. annual (ex VAT)'}
+                      </p>
+                      <p
+                        className="font-semibold"
+                        style={{
+                          color: isExport ? 'var(--color-success-text)' : 'var(--color-primary-text)',
+                          fontFamily: 'var(--font-mono)',
+                        }}
+                      >
+                        {isExport ? '+' : ''}{formatCurrency(breakdown.subtotal, currency)}
                       </p>
                     </div>
                   )}
@@ -416,7 +602,7 @@ export default function NewQuotePage() {
                     <div
                       className="mt-3 gap-2 pt-3 text-xs"
                       style={{
-                        borderTop: '1px solid var(--border-subtle)',
+                        borderTop: `1px solid ${isExport ? 'var(--color-success)' : 'var(--border-subtle)'}`,
                         color: 'var(--text-secondary)',
                         display: 'grid',
                         gridTemplateColumns: `repeat(${colCount}, 1fr)`,
@@ -433,7 +619,7 @@ export default function NewQuotePage() {
                       {product.pricingStructure.rates.map((r) => (
                         <div key={r.id}>
                           <p style={{ color: 'var(--text-tertiary)' }}>{r.label}</p>
-                          <p className="font-medium" style={{ fontFamily: 'var(--font-mono)' }}>{formatRate(r.unitRate)}</p>
+                          <p className="font-medium" style={{ fontFamily: 'var(--font-mono)', color: isExport ? 'var(--color-success-text)' : undefined }}>{formatRate(r.unitRate)}</p>
                         </div>
                       ))}
                     </div>
@@ -451,11 +637,33 @@ export default function NewQuotePage() {
             );
           })}
 
-          {selectedProductIds.length > 0 && (
-            <div className="rounded-md px-4 py-2 text-sm" style={{ background: 'var(--color-primary-subtle)', color: 'var(--color-primary-text)' }}>
-              Live estimate (ex VAT): <strong style={{ fontFamily: 'var(--font-mono)' }}>{formatCurrency(liveEstimate(selectedProducts))}</strong>
-            </div>
-          )}
+          {/* Live estimate / net cost banner */}
+          {selectedProductIds.length > 0 && (() => {
+            const { importCost, exportIncome, net, hasExport, currency } = netCostSummary();
+            if (hasExport) {
+              return (
+                <div className="rounded-md px-4 py-2.5 text-sm space-y-1" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
+                  <div className="flex items-center justify-between">
+                    <span style={{ color: 'var(--text-secondary)' }}>Import cost (ex VAT)</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>{formatCurrency(importCost, currency)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span style={{ color: 'var(--color-success-text)' }}>Export income</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-success-text)' }}>− {formatCurrency(exportIncome, currency)}</span>
+                  </div>
+                  <div className="flex items-center justify-between pt-1" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                    <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>Net estimate (ex VAT)</span>
+                    <span className="font-semibold" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-primary-text)' }}>{formatCurrency(net, currency)}</span>
+                  </div>
+                </div>
+              );
+            }
+            return (
+              <div className="rounded-md px-4 py-2 text-sm" style={{ background: 'var(--color-primary-subtle)', color: 'var(--color-primary-text)' }}>
+                Live estimate (ex VAT): <strong style={{ fontFamily: 'var(--font-mono)' }}>{formatCurrency(importCost, currency)}</strong>
+              </div>
+            );
+          })()}
 
           <div className="flex justify-between">
             <Button variant="secondary" size="sm" onClick={() => setStep(1)}>Back</Button>
@@ -487,11 +695,24 @@ export default function NewQuotePage() {
           {selectedProducts.map((product) => {
             const bd = calculateCost({ product, annualUsageKwh: annualUsage, annualExportKwh: exportKwh, usageProfile });
             const currency = currencyForProduct(product);
+            const isExport = product.productType === 'export';
+            const isBundle = product.productType === 'bundled';
+
             return (
               <Card key={product.id}>
-                <div className="mb-3 flex items-center gap-2">
+                <div className="mb-3 flex flex-wrap items-center gap-2">
                   <h3 className="text-sm font-semibold" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>{product.name}</h3>
                   <Badge variant={product.productType} />
+                  {isExport && (
+                    <span className="flex items-center gap-0.5 text-xs font-medium" style={{ color: 'var(--color-success-text)' }}>
+                      <DollarSign size={11} /> Export income
+                    </span>
+                  )}
+                  {isBundle && (
+                    <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'var(--bg-elevated)', color: 'var(--text-tertiary)', border: '1px solid var(--border-subtle)' }}>
+                      Electricity + Gas bundle
+                    </span>
+                  )}
                 </div>
                 <table className="w-full text-sm">
                   <tbody>
@@ -504,9 +725,11 @@ export default function NewQuotePage() {
                     {bd.rateLines.map((line) => (
                       <tr key={line.label} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                         <td className="py-1" style={{ color: 'var(--text-secondary)' }}>
-                          {line.label} <span style={{ color: 'var(--text-tertiary)' }}>({line.kwhUsed.toLocaleString()} kWh @ {formatRate(line.unitRate)})</span>
+                          {line.label} <span style={{ color: 'var(--text-tertiary)' }}>({line.kwhUsed.toLocaleString(undefined, { maximumFractionDigits: 0 })} kWh @ {formatRate(line.unitRate)})</span>
                         </td>
-                        <td className="py-1 text-right" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{formatCurrency(line.cost, currency)}</td>
+                        <td className="py-1 text-right" style={{ color: isExport ? 'var(--color-success-text)' : 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
+                          {isExport ? '+' : ''}{formatCurrency(line.cost, currency)}
+                        </td>
                       </tr>
                     ))}
                     {bd.leviesTotal > 0 && (
@@ -516,22 +739,62 @@ export default function NewQuotePage() {
                       </tr>
                     )}
                     <tr style={{ borderTop: '1px solid var(--border-default)' }}>
-                      <td className="py-1.5 font-medium" style={{ color: 'var(--text-primary)' }}>Subtotal (ex VAT)</td>
-                      <td className="py-1.5 text-right font-medium" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{formatCurrency(bd.subtotal, currency)}</td>
+                      <td className="py-1.5 font-medium" style={{ color: 'var(--text-primary)' }}>
+                        {isExport ? 'Annual income (ex VAT)' : 'Subtotal (ex VAT)'}
+                      </td>
+                      <td className="py-1.5 text-right font-medium" style={{ color: isExport ? 'var(--color-success-text)' : 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
+                        {isExport ? '+' : ''}{formatCurrency(bd.subtotal, currency)}
+                      </td>
                     </tr>
-                    <tr>
-                      <td className="py-1" style={{ color: 'var(--text-secondary)' }}>VAT ({bd.vat > 0 ? ((bd.vat / bd.subtotal) * 100).toFixed(0) : 0}%)</td>
-                      <td className="py-1 text-right" style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{formatCurrency(bd.vat, currency)}</td>
-                    </tr>
-                    <tr style={{ background: 'var(--color-primary-subtle)' }}>
-                      <td className="rounded-l px-2 py-1.5 font-semibold" style={{ color: 'var(--color-primary-text)' }}>Total (inc VAT)</td>
-                      <td className="rounded-r px-2 py-1.5 text-right font-semibold" style={{ color: 'var(--color-primary-text)', fontFamily: 'var(--font-mono)' }}>{formatCurrency(bd.total, currency)}</td>
-                    </tr>
+                    {!isExport && (
+                      <>
+                        <tr>
+                          <td className="py-1" style={{ color: 'var(--text-secondary)' }}>VAT ({bd.vat > 0 ? ((bd.vat / bd.subtotal) * 100).toFixed(0) : 0}%)</td>
+                          <td className="py-1 text-right" style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{formatCurrency(bd.vat, currency)}</td>
+                        </tr>
+                        <tr style={{ background: 'var(--color-primary-subtle)' }}>
+                          <td className="rounded-l px-2 py-1.5 font-semibold" style={{ color: 'var(--color-primary-text)' }}>Total (inc VAT)</td>
+                          <td className="rounded-r px-2 py-1.5 text-right font-semibold" style={{ color: 'var(--color-primary-text)', fontFamily: 'var(--font-mono)' }}>{formatCurrency(bd.total, currency)}</td>
+                        </tr>
+                      </>
+                    )}
                   </tbody>
                 </table>
               </Card>
             );
           })}
+
+          {/* Net cost summary when export products are included */}
+          {selectedProducts.some((p) => p.productType === 'export') && (() => {
+            const { importCost, exportIncome, net, currency } = netCostSummary();
+            const vatRate = selectedProducts.find((p) => p.productType !== 'export')?.pricingStructure.vatRate ?? 5;
+            const netWithVat = net * (1 + vatRate / 100);
+            return (
+              <Card>
+                <h3 className="mb-3 text-sm font-semibold" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>Net Cost Summary</h3>
+                <table className="w-full text-sm">
+                  <tbody>
+                    <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                      <td className="py-1" style={{ color: 'var(--text-secondary)' }}>Total import cost (ex VAT)</td>
+                      <td className="py-1 text-right" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{formatCurrency(importCost, currency)}</td>
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                      <td className="py-1" style={{ color: 'var(--color-success-text)' }}>Export income (ex VAT)</td>
+                      <td className="py-1 text-right" style={{ color: 'var(--color-success-text)', fontFamily: 'var(--font-mono)' }}>− {formatCurrency(exportIncome, currency)}</td>
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                      <td className="py-1.5 font-medium" style={{ color: 'var(--text-primary)' }}>Net cost (ex VAT)</td>
+                      <td className="py-1.5 text-right font-medium" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{formatCurrency(net, currency)}</td>
+                    </tr>
+                    <tr style={{ background: 'var(--color-primary-subtle)' }}>
+                      <td className="rounded-l px-2 py-1.5 font-semibold" style={{ color: 'var(--color-primary-text)' }}>Estimated net (inc VAT)</td>
+                      <td className="rounded-r px-2 py-1.5 text-right font-semibold" style={{ color: 'var(--color-primary-text)', fontFamily: 'var(--font-mono)' }}>{formatCurrency(netWithVat, currency)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </Card>
+            );
+          })()}
 
           <Card>
             <div className="space-y-3">

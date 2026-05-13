@@ -1,5 +1,4 @@
-import { CostBreakdown, PricingInput, Product, PricingStructure } from '@/lib/types';
-import { getProductById } from '@/lib/data/products';
+import { CostBreakdown, PricingInput, PricingStructure } from '@/lib/types';
 
 const DAYS_PER_YEAR = 365;
 const PENCE_PER_POUND = 100;
@@ -62,10 +61,6 @@ function buildBreakdown(
   };
 }
 
-function resolveProduct(productId: string): Product | undefined {
-  return getProductById(productId);
-}
-
 // Calculate cost directly from a pricing snapshot — used by quote detail to avoid live-product drift
 export function calculateCostFromSnapshot(
   pricingStructure: PricingStructure,
@@ -94,48 +89,16 @@ export function calculateCost(input: PricingInput): CostBreakdown {
   const offPeakPercent = usageProfile?.offPeakPercent ?? DEFAULT_OFF_PEAK_PERCENT;
   const nightPercent = usageProfile?.nightPercent;
 
-  // Bundled products: sum the cost of each component
-  if (product.productType === 'bundled' && product.bundleComponents) {
-    const components = product.bundleComponents
-      .map(resolveProduct)
-      .filter((p): p is Product => p !== undefined);
-
-    const componentBreakdowns = components.map((component) => {
-      const componentUsage =
-        component.productType === 'export' && annualExportKwh !== undefined
-          ? annualExportKwh
-          : annualUsageKwh;
-      return buildBreakdown(component.pricingStructure, componentUsage, peakPercent, offPeakPercent, nightPercent);
-    });
-
-    if (componentBreakdowns.length === 0) {
-      // Fall back to the bundle's own pricing structure
-      return buildBreakdown(
-        product.pricingStructure,
-        effectiveUsageKwh,
-        peakPercent,
-        offPeakPercent,
-        nightPercent,
-      );
-    }
-
-    const standingChargeAnnual = componentBreakdowns.reduce(
-      (sum, b) => sum + b.standingChargeAnnual,
-      0,
+  // Bundled products use their own pricingStructure (which aggregates all component rates).
+  // bundleComponents is used for display/decomposition in the UI only.
+  if (product.productType === 'bundled') {
+    return buildBreakdown(
+      product.pricingStructure,
+      effectiveUsageKwh,
+      peakPercent,
+      offPeakPercent,
+      nightPercent,
     );
-    const rateLines = componentBreakdowns.flatMap((b) => b.rateLines);
-    const leviesTotal = componentBreakdowns.reduce(
-      (sum, b) => sum + b.leviesTotal,
-      0,
-    );
-    const ratesCost = rateLines.reduce((sum, l) => sum + l.cost, 0);
-    const subtotal = standingChargeAnnual + ratesCost + leviesTotal;
-    // Use the bundle's own VAT rate for the aggregate
-    const vatRate = product.pricingStructure.vatRate;
-    const vat = (subtotal * vatRate) / 100;
-    const total = subtotal + vat;
-
-    return { standingChargeAnnual, rateLines, leviesTotal, subtotal, vat, total };
   }
 
   return buildBreakdown(
