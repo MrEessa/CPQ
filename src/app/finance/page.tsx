@@ -2,13 +2,16 @@
 
 import { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Flag, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import Link from 'next/link';
+import { Flag, AlertTriangle, CheckCircle2, Sparkles, ArrowRight } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, ResponsiveContainer,
 } from 'recharts';
 import { getLedgerEntries, getMarginSummary, getUnbilledAccounts, getAuditEntries, WHOLESALE_COST_PER_KWH } from '@/lib/data/finance';
+import { getProductById } from '@/lib/data/products';
+import Badge from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
-import { formatCurrency, formatDate, formatDateTime, formatUsage } from '@/lib/utils';
+import { formatCurrency, formatDate, formatDateTime, formatUsage, formatRate } from '@/lib/utils';
 import type { LedgerEntryType, AuditEntryAction } from '@/lib/types';
 
 type TabId = 'ledger' | 'margin' | 'revenue-assurance' | 'audit-log';
@@ -56,6 +59,104 @@ function barColor(marginPct: number): string {
   if (marginPct >= 30) return 'var(--color-success)';
   if (marginPct >= MARGIN_THRESHOLD) return 'var(--color-warning)';
   return 'var(--color-danger)';
+}
+
+const MARGIN_TARGET = 0.20; // 20% — target used by the rate health advisor
+
+function RateHealthAdvisor({ atRisk, wholesalePence }: { atRisk: ReturnType<typeof getMarginSummary>; wholesalePence: number }) {
+  return (
+    <div className="rounded-lg p-4" style={{ background: 'var(--bg-elevated)', border: '1px dashed var(--color-primary)' }}>
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-3">
+        <Sparkles size={14} style={{ color: 'var(--color-primary)' }} />
+        <span className="text-sm font-semibold" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
+          AI Rate Health Advisor
+        </span>
+        <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'var(--color-primary-subtle)', color: 'var(--color-primary-text)', fontWeight: 500 }}>
+          beta
+        </span>
+        <span className="ml-auto text-xs" style={{ color: 'var(--text-tertiary)' }}>
+          Suggested adjustments to restore {(MARGIN_TARGET * 100).toFixed(0)}% target margin
+        </span>
+      </div>
+
+      <div className="space-y-2.5">
+        {atRisk.map((m) => {
+          const product = getProductById(m.productId);
+          if (!product) return null;
+
+          // How much more revenue is needed to hit MARGIN_TARGET?
+          // targetRevenue = wholesale / (1 - MARGIN_TARGET)
+          const targetRevenue = m.totalWholesaleCost / (1 - MARGIN_TARGET);
+          const deltaRevenue = targetRevenue - m.totalRevenue;
+          const deltaPerKwh = m.totalUsageKwh > 0 ? (deltaRevenue / m.totalUsageKwh) * 100 : 0;
+
+          // Apply delta to primary rate
+          const primaryRate = product.pricingStructure.rates[0];
+          const suggestedRate = primaryRate ? primaryRate.unitRate + deltaPerKwh : null;
+
+          return (
+            <div
+              key={m.productId}
+              className="rounded-md p-3"
+              style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1">
+                  <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                    <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{m.productName}</span>
+                    <Badge variant={product.productType} />
+                    <span
+                      className="text-xs px-1.5 py-0.5 rounded-full font-semibold"
+                      style={{ background: 'var(--color-danger-subtle)', color: 'var(--color-danger-text)' }}
+                    >
+                      {m.grossMarginPercent.toFixed(1)}% margin
+                    </span>
+                  </div>
+
+                  {primaryRate && suggestedRate !== null && (
+                    <>
+                      <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                        <span className="font-medium">{primaryRate.label}:</span>{' '}
+                        {formatRate(primaryRate.unitRate)}
+                        {' → '}
+                        <span className="font-semibold" style={{ color: 'var(--color-primary-text)' }}>
+                          {formatRate(suggestedRate)}
+                        </span>
+                        {' '}
+                        <span style={{ color: 'var(--text-tertiary)' }}>
+                          (+{deltaPerKwh.toFixed(1)}p/kWh · restores margin to ~{(MARGIN_TARGET * 100).toFixed(0)}%)
+                        </span>
+                      </p>
+                      <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                        Based on {formatUsage(m.totalUsageKwh)} billed usage at {wholesalePence.toFixed(1)}p/kWh wholesale proxy.
+                        Rate changes create a new product version — existing quotes are unaffected.
+                      </p>
+                    </>
+                  )}
+                </div>
+                <Link
+                  href={`/catalogue/${m.productId}`}
+                  className="shrink-0 inline-flex items-center gap-1 text-xs font-medium"
+                  style={{
+                    color: 'var(--color-primary-text)',
+                    background: 'var(--color-primary-subtle)',
+                    border: '1px solid var(--color-primary)',
+                    borderRadius: 4,
+                    padding: '3px 10px',
+                    textDecoration: 'none',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Review tariff <ArrowRight size={11} />
+                </Link>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function FinancePageInner() {
@@ -293,6 +394,9 @@ function FinancePageInner() {
               </ul>
             </div>
           )}
+
+          {/* AI Rate Health Advisor — only shown when products are at risk */}
+          {atRisk.length > 0 && <RateHealthAdvisor atRisk={atRisk} wholesalePence={wholesalePence} />}
         </div>
       )}
 

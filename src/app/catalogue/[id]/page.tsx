@@ -310,6 +310,9 @@ export default function ProductDetailPage({ params }: Props) {
       {/* Version history */}
       <Card>
         <CardHeader><CardTitle>Version History</CardTitle></CardHeader>
+        <p className="mb-3 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+          Pricing changes create a new version with a new effective date. Quotes preserve the pricing snapshot at the time of issuance — rate changes never affect already-issued quotes.
+        </p>
         <div className="space-y-2 text-sm">
           <VersionRow label={`v${product.version} (current)`} effectiveFrom={product.effectiveFrom} effectiveTo={product.effectiveTo} pricingStructure={product.pricingStructure} highlight />
           {historyNewestFirst.map((snap) => (

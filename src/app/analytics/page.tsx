@@ -6,16 +6,18 @@ import { getBills } from '@/lib/data/bills';
 import { getCustomers } from '@/lib/data/customers';
 import { getMarginSummary, WHOLESALE_COST_PER_KWH } from '@/lib/data/finance';
 import { getDebtAccounts } from '@/lib/data/debt';
+import { getQuotes } from '@/lib/data/quotes';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { formatCurrency, formatUsage } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 
-type TabId = 'portfolio' | 'billing' | 'behaviour' | 'tariff';
+type TabId = 'portfolio' | 'billing' | 'behaviour' | 'tariff' | 'quoting';
 const TABS: { id: TabId; label: string }[] = [
   { id: 'portfolio', label: 'Portfolio Overview' },
   { id: 'billing',   label: 'Billing Performance' },
   { id: 'behaviour', label: 'Customer Behaviour' },
   { id: 'tariff',    label: 'Tariff Performance' },
+  { id: 'quoting',   label: 'Quoting' },
 ];
 
 // Theme-aware chart palettes
@@ -107,6 +109,48 @@ export default function AnalyticsPage() {
   const totalWholesale  = marginSummaries.reduce((s, m) => s + m.totalWholesaleCost, 0);
   const totalMargin     = marginSummaries.reduce((s, m) => s + m.grossMargin, 0);
   const blendedMarginPct = totalRevenue > 0 ? (totalMargin / totalRevenue) * 100 : 0;
+
+  // Quoting
+  const quotes       = getQuotes();
+  const byStatus     = {
+    draft:          quotes.filter((q) => q.status === 'draft').length,
+    pending_review: quotes.filter((q) => q.status === 'pending_review').length,
+    issued:         quotes.filter((q) => q.status === 'issued').length,
+    accepted:       quotes.filter((q) => q.status === 'accepted').length,
+    rejected:       quotes.filter((q) => q.status === 'rejected').length,
+    expired:        quotes.filter((q) => q.status === 'expired').length,
+  };
+  const activeFunnel     = byStatus.issued + byStatus.accepted + byStatus.rejected;
+  const conversionRate   = activeFunnel > 0 ? (byStatus.accepted / activeFunnel) * 100 : 0;
+  const pipelineValue    = quotes.filter((q) => q.status === 'issued').reduce((s, q) => s + q.totalWithVat, 0);
+  const avgQuoteValue    = quotes.length > 0 ? quotes.reduce((s, q) => s + q.totalWithVat, 0) / quotes.length : 0;
+
+  const quoteFunnelData  = (
+    [
+      { status: 'Draft',          count: byStatus.draft,          color: C.gray },
+      { status: 'Pending Review', count: byStatus.pending_review, color: C.accent },
+      { status: 'Issued',         count: byStatus.issued,         color: C.primary },
+      { status: 'Accepted',       count: byStatus.accepted,       color: C.success },
+      { status: 'Rejected',       count: byStatus.rejected,       color: C.danger },
+      { status: 'Expired',        count: byStatus.expired,        color: C.gray },
+    ] as const
+  ).filter((d) => d.count > 0);
+
+  // Top products by number of quotes they appear in
+  const productFreq = new Map<string, number>();
+  quotes.forEach((q) => q.products.forEach((p) => productFreq.set(p.productName, (productFreq.get(p.productName) ?? 0) + 1)));
+  const topProducts = Array.from(productFreq.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([name, count]) => ({ product: name.replace(/-v\d+$/, ''), count }));
+
+  // Quote volume by calendar month (all time, newest first → reverse for chart)
+  const allMonths    = Array.from(new Set(quotes.map((q) => q.createdAt.slice(0, 7)))).sort();
+  const quotesByMonth = allMonths.map((month) => ({
+    month: monthLabel(month),
+    Quotes:   quotes.filter((q) => q.createdAt.startsWith(month)).length,
+    Accepted: quotes.filter((q) => q.createdAt.startsWith(month) && q.status === 'accepted').length,
+  }));
 
   const axisStyle = { fontSize: 11, fill: C.axis };
   const tooltipStyle = { contentStyle: { background: 'var(--bg-elevated)', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: 12, color: 'var(--text-primary)' }, labelStyle: { color: 'var(--text-secondary)' } };
@@ -342,6 +386,142 @@ export default function AnalyticsPage() {
               View full margin model → Financial Control
             </a>
           </div>
+        </div>
+      )}
+
+      {/* Quoting */}
+      {activeTab === 'quoting' && (
+        <div className="space-y-5">
+          {/* KPIs */}
+          <div className="grid grid-cols-4 gap-4">
+            <KpiCard label="Total Quotes"     value={String(quotes.length)}          sub={`${byStatus.draft} draft · ${byStatus.issued} issued`} />
+            <KpiCard label="Conversion Rate"  value={`${conversionRate.toFixed(0)}%`} sub="accepted of issued/accepted/rejected"
+              valueColor={conversionRate >= 50 ? 'var(--color-success-text)' : conversionRate >= 25 ? 'var(--color-warning-text)' : 'var(--color-danger-text)'} />
+            <KpiCard label="Pipeline Value"   value={formatCurrency(pipelineValue)}   sub="issued quotes (inc VAT)"
+              valueColor="var(--color-success-text)" />
+            <KpiCard label="Avg Quote Value"  value={formatCurrency(avgQuoteValue)}   sub="across all quotes" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            {/* Quote status funnel */}
+            <Card>
+              <CardHeader><CardTitle>Quotes by Status</CardTitle></CardHeader>
+              <div className="space-y-2 mt-1">
+                {quoteFunnelData.map(({ status, count, color }) => (
+                  <div key={status} className="flex items-center gap-3">
+                    <span className="w-28 shrink-0 text-xs" style={{ color: 'var(--text-secondary)' }}>{status}</span>
+                    <div className="flex-1 h-5 rounded overflow-hidden" style={{ background: 'var(--bg-elevated)' }}>
+                      <div
+                        style={{
+                          width: `${(count / quotes.length) * 100}%`,
+                          height: '100%',
+                          background: color,
+                          minWidth: count > 0 ? 24 : 0,
+                          transition: 'width 300ms',
+                        }}
+                      />
+                    </div>
+                    <span className="w-5 shrink-0 text-right text-xs font-semibold tabular-nums" style={{ color: 'var(--text-primary)' }}>{count}</span>
+                  </div>
+                ))}
+              </div>
+              {/* Conversion funnel summary */}
+              <div className="mt-4 pt-3 grid grid-cols-3 gap-2 text-center text-xs" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                {[
+                  { label: 'Issued',   value: byStatus.issued,   color: C.primary },
+                  { label: 'Accepted', value: byStatus.accepted, color: C.success },
+                  { label: 'Rejected', value: byStatus.rejected, color: C.danger },
+                ].map(({ label, value, color }) => (
+                  <div key={label}>
+                    <p className="font-bold text-base" style={{ fontFamily: 'var(--font-display)', color }}>{value}</p>
+                    <p style={{ color: 'var(--text-tertiary)' }}>{label}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            {/* Top products */}
+            <Card>
+              <CardHeader><CardTitle>Top Products by Quote Frequency</CardTitle></CardHeader>
+              {topProducts.length > 0 ? (
+                <div className="space-y-2 mt-1">
+                  {topProducts.map(({ product, count }) => (
+                    <div key={product} className="flex items-center gap-3">
+                      <span className="flex-1 text-xs truncate" style={{ color: 'var(--text-secondary)' }}>{product}</span>
+                      <div className="w-24 h-4 rounded overflow-hidden" style={{ background: 'var(--bg-elevated)' }}>
+                        <div
+                          style={{
+                            width: `${(count / (topProducts[0]?.count ?? 1)) * 100}%`,
+                            height: '100%',
+                            background: C.primary,
+                            transition: 'width 300ms',
+                          }}
+                        />
+                      </div>
+                      <span className="w-4 text-right text-xs font-semibold tabular-nums" style={{ color: 'var(--text-primary)' }}>{count}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2 text-xs" style={{ color: 'var(--text-tertiary)' }}>No product data.</p>
+              )}
+              <p className="mt-4 text-xs" style={{ color: 'var(--text-tertiary)', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.75rem' }}>
+                Count = number of quotes (draft through expired) that include each product.
+              </p>
+            </Card>
+          </div>
+
+          {/* Monthly volume trend */}
+          {quotesByMonth.length > 0 && (
+            <Card>
+              <CardHeader><CardTitle>Quote Volume by Month</CardTitle></CardHeader>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={quotesByMonth} margin={{ top: 4, right: 12, bottom: 0, left: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={C.grid} />
+                  <XAxis dataKey="month" tick={axisStyle} axisLine={false} tickLine={false} />
+                  <YAxis tick={axisStyle} axisLine={false} tickLine={false} allowDecimals={false} width={30} />
+                  <Tooltip {...tooltipStyle} />
+                  <Legend {...legendStyle} />
+                  <Bar dataKey="Quotes"   fill={C.primary} radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="Accepted" fill={C.success} radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </Card>
+          )}
+
+          {/* Pipeline detail table */}
+          <Card padding={false}>
+            <div className="px-5 py-3.5" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.875rem' }}>Issued Quote Pipeline</h3>
+              <p className="mt-0.5 text-xs" style={{ color: 'var(--text-tertiary)' }}>Quotes currently in issued state — potential committed revenue</p>
+            </div>
+            {quotes.filter((q) => q.status === 'issued').length === 0 ? (
+              <div className="py-8 text-center text-sm" style={{ color: 'var(--text-tertiary)' }}>No issued quotes in pipeline.</div>
+            ) : (
+              <table className="data-table">
+                <thead><tr><th>Reference</th><th>Customer</th><th>Type</th><th className="text-right">Annual Cost</th><th className="text-right">Inc VAT</th><th>Valid Until</th></tr></thead>
+                <tbody>
+                  {quotes.filter((q) => q.status === 'issued').map((q) => (
+                    <tr key={q.id}>
+                      <td className="cell-mono text-xs">{q.reference}</td>
+                      <td className="cell-primary">{q.customerName}</td>
+                      <td className="capitalize text-xs" style={{ color: 'var(--text-secondary)' }}>{q.customerType}</td>
+                      <td className="text-right cell-mono">{formatCurrency(q.estimatedAnnualCost)}</td>
+                      <td className="text-right cell-mono font-medium" style={{ color: 'var(--color-success-text)' }}>{formatCurrency(q.totalWithVat)}</td>
+                      <td className="text-xs" style={{ color: 'var(--text-secondary)' }}>{q.validUntil}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot style={{ borderTop: '1px solid var(--border-default)', background: 'var(--bg-subtle)' }}>
+                  <tr>
+                    <td colSpan={4} className="px-5 py-2.5 text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>Pipeline total (inc VAT)</td>
+                    <td className="px-5 py-2.5 text-right cell-mono font-semibold" style={{ color: 'var(--color-success-text)' }}>{formatCurrency(pipelineValue)}</td>
+                    <td />
+                  </tr>
+                </tfoot>
+              </table>
+            )}
+          </Card>
         </div>
       )}
     </div>
