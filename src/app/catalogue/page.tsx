@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Plus } from 'lucide-react';
+import { Plus, Sparkles, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
 import { getProducts, addProduct } from '@/lib/data/products';
+import { getCatalogueGaps } from '@/lib/catalogue-analysis';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
@@ -43,22 +44,40 @@ const PRODUCT_TYPES: ProductType[] = ['flat_rate', 'time_of_use', 'dynamic', 'ex
 const STATUSES: ProductStatus[] = ['draft', 'active', 'deprecated'];
 const FUEL_TYPES: FuelType[] = ['electricity', 'gas', 'dual_fuel', 'ev'];
 
+const PRIORITY_STYLE: Record<string, React.CSSProperties> = {
+  high:   { background: 'var(--color-danger-subtle)',  color: 'var(--color-danger-text)' },
+  medium: { background: 'var(--color-warning-subtle)', color: 'var(--color-warning-text)' },
+};
+
 export default function CataloguePage() {
   const [filterStatus, setFilterStatus]   = useState<ProductStatus[]>([]);
   const [filterType, setFilterType]       = useState<ProductType[]>([]);
   const [filterMarket, setFilterMarket]   = useState('');
   const [showModal, setShowModal]         = useState(false);
+  const [gapPanelOpen, setGapPanelOpen]   = useState(true);
   const [, forceUpdate]                   = useState(0);
-  const [form, setForm]                   = useState({ name: '', productType: '' as ProductType | '', fuelType: '' as FuelType | '', markets: [] as string[] });
+  const [form, setForm]                   = useState({
+    name: '', productType: '' as ProductType | '',
+    fuelType: '' as FuelType | '', markets: [] as string[],
+  });
 
+  const allProducts = getProducts({});
   const products = getProducts({
     status:      filterStatus.length ? filterStatus : undefined,
     productType: filterType.length   ? filterType   : undefined,
     market:      filterMarket        || undefined,
   });
 
+  // Gap analysis scoped to active market filter (or all markets)
+  const gaps = getCatalogueGaps(allProducts, filterMarket || undefined);
+
   function toggleFilter<T>(arr: T[], val: T): T[] {
     return arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val];
+  }
+
+  function openModalWithSuggestion(productType: ProductType, fuelType: FuelType, market: string) {
+    setForm({ name: '', productType, fuelType, markets: [market] });
+    setShowModal(true);
   }
 
   function handleAddProduct() {
@@ -86,7 +105,9 @@ export default function CataloguePage() {
     <div className="w-full space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="section-title">{products.length} product{products.length !== 1 ? 's' : ''}</h2>
-        <Button size="sm" onClick={() => setShowModal(true)}><Plus size={14} /> Add Product</Button>
+        <Button size="sm" onClick={() => { setForm({ name: '', productType: '', fuelType: '', markets: [] }); setShowModal(true); }}>
+          <Plus size={14} /> Add Product
+        </Button>
       </div>
 
       {/* Filters */}
@@ -111,6 +132,87 @@ export default function CataloguePage() {
         </div>
       </div>
 
+      {/* AI Catalogue Gap Analysis */}
+      {gaps.length > 0 && (
+        <div className="rounded-lg" style={{ border: '1px dashed var(--color-primary)', background: 'var(--bg-elevated)' }}>
+          {/* Panel header — always visible */}
+          <button
+            className="flex w-full items-center gap-2 px-4 py-3 text-left"
+            onClick={() => setGapPanelOpen((o) => !o)}
+          >
+            <Sparkles size={14} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+            <span className="text-sm font-semibold" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
+              AI Catalogue Analysis
+            </span>
+            <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'var(--color-primary-subtle)', color: 'var(--color-primary-text)', fontWeight: 500 }}>
+              beta
+            </span>
+            <span className="text-xs ml-1" style={{ color: 'var(--text-tertiary)' }}>
+              {gaps.length} coverage gap{gaps.length !== 1 ? 's' : ''} identified
+              {filterMarket ? ` in ${filterMarket} market` : ' across active markets'}
+            </span>
+            <span className="ml-auto" style={{ color: 'var(--text-tertiary)' }}>
+              {gapPanelOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </span>
+          </button>
+
+          {/* Gap cards */}
+          {gapPanelOpen && (
+            <div
+              className="grid gap-3 px-4 pb-4"
+              style={{
+                gridTemplateColumns: gaps.length > 2 ? 'repeat(2, 1fr)' : `repeat(${gaps.length}, 1fr)`,
+                borderTop: '1px solid var(--border-subtle)',
+                paddingTop: '0.75rem',
+              }}
+            >
+              {gaps.map((gap) => (
+                <div
+                  key={gap.id}
+                  className="rounded-md p-3"
+                  style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+                >
+                  <div className="flex items-start justify-between gap-2 mb-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span
+                        className="text-xs font-semibold px-1.5 py-0.5 rounded-full"
+                        style={PRIORITY_STYLE[gap.priority]}
+                      >
+                        {gap.priority === 'high' ? 'High priority' : 'Medium priority'}
+                      </span>
+                      <span
+                        className="text-xs px-1.5 py-0.5 rounded"
+                        style={{ background: 'var(--color-primary-subtle)', color: 'var(--color-primary-text)', fontWeight: 500 }}
+                      >
+                        {gap.market}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => openModalWithSuggestion(gap.suggestedProductType, gap.suggestedFuelType, gap.market)}
+                      className="shrink-0 inline-flex items-center gap-1 text-xs font-medium"
+                      style={{
+                        color: 'var(--color-primary-text)',
+                        background: 'var(--color-primary-subtle)',
+                        border: '1px solid var(--color-primary)',
+                        borderRadius: 4,
+                        padding: '2px 8px',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      Create <ArrowRight size={10} />
+                    </button>
+                  </div>
+                  <p className="text-xs font-semibold mb-0.5" style={{ color: 'var(--text-primary)' }}>{gap.title}</p>
+                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{gap.rationale}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Product table */}
       <Card padding={false}>
         {products.length === 0 ? (
           <div className="py-12 text-center text-sm" style={{ color: 'var(--text-tertiary)' }}>
