@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import { notFound, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, MapPin, CreditCard, ClipboardList, MessageSquare, FileText, StickyNote, AlertCircle, ShieldCheck, CheckCircle2, XCircle } from 'lucide-react';
+import { ArrowLeft, MapPin, CreditCard, ClipboardList, MessageSquare, FileText, StickyNote, AlertCircle, ShieldCheck, CheckCircle2, XCircle, Receipt } from 'lucide-react';
 import { getCustomerById, updateCustomer } from '@/lib/data/customers';
+import { getQuotesForCustomer } from '@/lib/data/quotes';
 import { getBillsForCustomer } from '@/lib/data/bills';
 import { getCommunicationsForCustomer, addCommunication } from '@/lib/data/communications';
 import { getTasksForCustomer, addTask } from '@/lib/data/tasks';
@@ -15,23 +16,24 @@ import Button from '@/components/ui/Button';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import Modal from '@/components/ui/Modal';
 import { formatCurrency, formatDate, formatDateTime, formatUsage, describeRule } from '@/lib/utils';
-import { CustomerStatus, CommunicationChannel, TaskPriority, CustomerType } from '@/lib/types';
+import { CustomerStatus, CommunicationChannel, TaskPriority, CustomerType, QuoteStatus } from '@/lib/types';
 
 const MARKET_CURRENCY: Record<string, string> = { GB: 'GBP', IE: 'EUR' };
 
-type Tab = 'overview' | 'billing' | 'communications' | 'tasks' | 'documents' | 'notes';
+type Tab = 'overview' | 'billing' | 'communications' | 'tasks' | 'quotes' | 'documents' | 'notes';
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: 'overview',        label: 'Overview',        icon: MapPin },
   { id: 'billing',         label: 'Billing',          icon: CreditCard },
   { id: 'communications',  label: 'Communications',   icon: MessageSquare },
   { id: 'tasks',           label: 'Tasks',            icon: ClipboardList },
+  { id: 'quotes',          label: 'Quotes',           icon: Receipt },
   { id: 'documents',       label: 'Documents',        icon: FileText },
   { id: 'notes',           label: 'Notes',            icon: StickyNote },
 ];
 
 const CUSTOMER_STATUSES: CustomerStatus[] = ['active', 'pending', 'suspended', 'closed'];
-const VALID_TABS: Tab[] = ['overview', 'billing', 'communications', 'tasks', 'documents', 'notes'];
+const VALID_TABS: Tab[] = ['overview', 'billing', 'communications', 'tasks', 'quotes', 'documents', 'notes'];
 
 function fmtType(t: CustomerType): string {
   if (t === 'ic') return 'I&C';
@@ -72,6 +74,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
   const bills = getBillsForCustomer(customer.id);
   const comms = getCommunicationsForCustomer(customer.id);
   const tasks = getTasksForCustomer(customer.id);
+  const quotes = getQuotesForCustomer(customer.id);
 
   function handleStatusChange(newStatus: CustomerStatus) { updateCustomer(customer.id, { status: newStatus }); forceUpdate((n) => n + 1); }
 
@@ -263,6 +266,36 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
               </div>
             )}
 
+            {activeTab === 'quotes' && (
+              <div className="space-y-3">
+                <div className="flex justify-end">
+                  <Link href={`/quotes/new?customerId=${customer.id}`}>
+                    <Button size="sm"><Receipt size={13} /> New Quote</Button>
+                  </Link>
+                </div>
+                <Card padding={false}>
+                  {quotes.length === 0 ? (
+                    <div className="py-10 text-center text-sm" style={{ color: 'var(--text-tertiary)' }}>No quotes for this customer.</div>
+                  ) : (
+                    <table className="data-table">
+                      <thead><tr><th>Reference</th><th>Products</th><th className="text-right">Annual Cost (inc VAT)</th><th>Status</th><th>Valid Until</th></tr></thead>
+                      <tbody>
+                        {quotes.map((q) => (
+                          <tr key={q.id}>
+                            <td className="cell-primary cell-mono"><Link href={`/quotes/${q.id}`} className="table-link">{q.reference}</Link></td>
+                            <td className="text-xs" style={{ color: 'var(--text-secondary)' }}>{q.products.map((p) => p.productName).join(', ')}</td>
+                            <td className="text-right cell-mono cell-primary font-medium">{formatCurrency(q.totalWithVat, currency)}</td>
+                            <td><Badge variant={q.status as QuoteStatus} /></td>
+                            <td className="text-xs">{formatDate(q.validUntil)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </Card>
+              </div>
+            )}
+
             {activeTab === 'documents' && (
               <Card>
                 <div className="flex flex-col items-center gap-2 py-10 text-center">
@@ -326,6 +359,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
             <CardTitle className="mb-3">Activity</CardTitle>
             <dl className="space-y-2 text-sm">
               <DLRow label="Bills" value={String(bills.length)} />
+              <DLRow label="Quotes" value={String(quotes.length)} />
               <DLRow label="Communications" value={String(comms.length)} />
               <div className="flex justify-between">
                 <dt style={{ color: 'var(--text-secondary)' }}>Open tasks</dt>

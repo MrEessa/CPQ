@@ -11,7 +11,7 @@ import Modal from '@/components/ui/Modal';
 import { Card } from '@/components/ui/Card';
 import { formatDate } from '@/lib/utils';
 import { FuelType, Market, PricingRate, ProductStatus, ProductType } from '@/lib/types';
-import { GB_MARKET, IE_MARKET } from '@/lib/data/seed';
+import { getMarkets } from '@/lib/data/markets';
 
 function defaultRates(productType: ProductType): PricingRate[] {
   const ts = Date.now();
@@ -39,7 +39,6 @@ function defaultRates(productType: ProductType): PricingRate[] {
   }
 }
 
-const MARKETS = [GB_MARKET, IE_MARKET];
 const PRODUCT_TYPES: ProductType[] = ['flat_rate', 'time_of_use', 'dynamic', 'export', 'bundled'];
 const STATUSES: ProductStatus[] = ['draft', 'active', 'deprecated'];
 const FUEL_TYPES: FuelType[] = ['electricity', 'gas', 'dual_fuel', 'ev'];
@@ -61,6 +60,7 @@ export default function CataloguePage() {
     fuelType: '' as FuelType | '', markets: [] as string[],
   });
 
+  const markets = getMarkets();
   const allProducts = getProducts({});
   const products = getProducts({
     status:      filterStatus.length ? filterStatus : undefined,
@@ -82,7 +82,7 @@ export default function CataloguePage() {
 
   function handleAddProduct() {
     if (!form.name || !form.productType || !form.fuelType || !form.markets.length) return;
-    const selectedMarkets: Market[] = MARKETS.filter((m) => form.markets.includes(m.code));
+    const selectedMarkets: Market[] = markets.filter((m) => form.markets.includes(m.code));
     const pt = form.productType as ProductType;
     const hasStandingCharge = pt !== 'export';
     addProduct({
@@ -126,7 +126,7 @@ export default function CataloguePage() {
         </div>
         <div className="flex items-center gap-1.5">
           <span className="filter-label">Market:</span>
-          {MARKETS.map((m) => (
+          {markets.map((m) => (
             <button key={m.code} onClick={() => setFilterMarket((p) => (p === m.code ? '' : m.code))} className={`filter-chip ${filterMarket === m.code ? 'active' : ''}`}>{m.code}</button>
           ))}
         </div>
@@ -273,7 +273,7 @@ export default function CataloguePage() {
           <div>
             <label className="field-label">Market(s) *</label>
             <div className="flex gap-4">
-              {MARKETS.map((m) => (
+              {markets.map((m) => (
                 <label key={m.code} className="flex items-center gap-1.5 text-sm" style={{ color: 'var(--text-primary)' }}>
                   <input
                     type="checkbox"

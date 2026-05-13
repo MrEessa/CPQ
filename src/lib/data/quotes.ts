@@ -35,6 +35,10 @@ export function saveQuote(quote: Quote): Quote {
   return quote;
 }
 
+export function getQuotesForCustomer(customerId: string): Quote[] {
+  return store.filter((q) => q.customerId === customerId);
+}
+
 export function getRecentQuotes(limit: number): Quote[] {
   return [...store]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))

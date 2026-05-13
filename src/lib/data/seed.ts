@@ -18,6 +18,8 @@ export const IE_MARKET: Market = {
   regulatoryScheme: 'CRU',
 };
 
+export const SEED_MARKETS: Market[] = [GB_MARKET, IE_MARKET];
+
 // ─── Products ─────────────────────────────────────────────────────────────────
 
 export const SEED_PRODUCTS: Product[] = [
@@ -38,13 +40,6 @@ export const SEED_PRODUCTS: Product[] = [
         operator: 'in',
         value: ['residential', 'sme'],
         description: 'Available to residential and SME customers',
-      },
-      {
-        id: 'er-001-2',
-        field: 'meterType',
-        operator: 'neq',
-        value: 'hh',
-        description: 'Not available for half-hourly metered sites',
       },
     ],
     pricingStructure: {
@@ -523,7 +518,7 @@ export const SEED_QUOTES: Quote[] = [
     id: 'qt-001',
     reference: 'QT-2024-0038',
     status: 'issued',
-    customerId: 'cust-101',
+    customerId: 'cust-005',
     customerName: 'Greenleaf Homes Ltd',
     customerType: 'sme',
     annualUsageKwh: 12500,
@@ -553,7 +548,7 @@ export const SEED_QUOTES: Quote[] = [
     id: 'qt-002',
     reference: 'QT-2024-0041',
     status: 'issued',
-    customerId: 'cust-202',
+    customerId: 'cust-009',
     customerName: 'Sunrise Community Solar CIC',
     customerType: 'sme',
     annualUsageKwh: 8200,
@@ -588,7 +583,7 @@ export const SEED_QUOTES: Quote[] = [
     id: 'qt-003',
     reference: 'QT-2024-0029',
     status: 'accepted',
-    customerId: 'cust-303',
+    customerId: 'cust-010',
     customerName: 'Fairview Properties',
     customerType: 'residential',
     annualUsageKwh: 3500,
@@ -618,9 +613,9 @@ export const SEED_QUOTES: Quote[] = [
     id: 'qt-004',
     reference: 'QT-2025-0001',
     status: 'draft',
-    customerId: 'cust-404',
+    customerId: 'cust-004',
     customerName: 'Harlow Manufacturing Ltd',
-    customerType: 'sme',
+    customerType: 'ic',
     annualUsageKwh: 47000,
     products: [
       {
@@ -646,7 +641,7 @@ export const SEED_QUOTES: Quote[] = [
     id: 'qt-005',
     reference: 'QT-2024-0017',
     status: 'expired',
-    customerId: 'cust-505',
+    customerId: 'cust-006',
     customerName: 'Riverside Retail Group',
     customerType: 'sme',
     annualUsageKwh: 9800,

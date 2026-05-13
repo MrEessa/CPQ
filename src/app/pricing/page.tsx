@@ -2,15 +2,15 @@
 
 import { useState } from 'react';
 import { getAllPricingRules } from '@/lib/data/pricing';
+import { getMarkets } from '@/lib/data/markets';
 import { Card } from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import { formatRate, formatStandingCharge } from '@/lib/utils';
 import Link from 'next/link';
 
-const MARKETS = ['GB', 'IE'];
-
 export default function PricingPage() {
   const [filterMarket, setFilterMarket] = useState('');
+  const marketCodes = getMarkets().map((m) => m.code);
   const rules = getAllPricingRules(filterMarket || undefined);
 
   return (
@@ -23,7 +23,7 @@ export default function PricingPage() {
       <div className="filter-row">
         <span className="filter-label">Market:</span>
         <button onClick={() => setFilterMarket('')} className={`filter-chip ${filterMarket === '' ? 'active' : ''}`}>All</button>
-        {MARKETS.map((m) => (
+        {marketCodes.map((m) => (
           <button key={m} onClick={() => setFilterMarket((p) => (p === m ? '' : m))} className={`filter-chip ${filterMarket === m ? 'active' : ''}`}>{m}</button>
         ))}
       </div>

@@ -16,6 +16,7 @@ const TITLES: Record<string, string> = {
   '/market': 'Market Communications',
   '/analytics': 'Analytics',
   '/finance': 'Financial Control',
+  '/settings': 'Settings',
 };
 
 function getTitle(pathname: string): string {

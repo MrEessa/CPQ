@@ -15,6 +15,7 @@ import {
   BarChart2,
   Landmark,
   Zap,
+  Settings,
 } from 'lucide-react';
 
 interface NavItem {
@@ -58,6 +59,12 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/analytics', label: 'Analytics', icon: BarChart2 },
       { href: '/finance', label: 'Financial Control', icon: Landmark },
+    ],
+  },
+  {
+    label: 'Administration',
+    items: [
+      { href: '/settings', label: 'Settings', icon: Settings },
     ],
   },
 ];
@@ -167,7 +174,7 @@ export default function Sidebar() {
           className="text-xs"
           style={{ color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)' }}
         >
-          Portfolio Demo v1.0
+          Eessa's Retail Demo v1.0
         </p>
       </div>
     </aside>

@@ -196,7 +196,7 @@ export interface DeviceOwnership {
   hasHeatPump?: boolean;
 }
 export type CustomerStatus = 'active' | 'pending' | 'suspended' | 'closed';
-export type MeterType = 'smart' | 'traditional' | 'prepayment' | 'hh';
+export type MeterType = 'smart' | 'traditional' | 'prepayment';
 
 export interface Address {
   line1: string;

@@ -57,10 +57,9 @@ const FIELD_LABELS: Record<string, string> = {
 };
 
 const METER_TYPE_LABELS: Record<string, string> = {
-  smart: 'smart meter',
+  smart: 'smart / AMR meter',
   traditional: 'traditional meter',
   prepayment: 'prepayment meter',
-  hh: 'half-hourly meter',
 };
 
 const CUSTOMER_TYPE_LABELS: Record<string, string> = {

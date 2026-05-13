@@ -141,7 +141,7 @@ export default function CustomersPage() {
             <div>
               <label className="field-label">Meter type</label>
               <select className="field-input" value={form.meterType} onChange={(e) => setForm({ ...form, meterType: e.target.value as MeterType })}>
-                <option value="smart">Smart</option><option value="traditional">Traditional</option><option value="prepayment">Prepayment</option>
+                <option value="smart">Smart / AMR</option><option value="traditional">Traditional</option><option value="prepayment">Prepayment</option>
               </select>
             </div>
             <div>

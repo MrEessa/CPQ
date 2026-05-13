@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, ArrowRight, CheckCircle, XCircle, Zap, Car, Sun, Battery, Thermometer, Sparkles, TrendingDown, DollarSign } from 'lucide-react';
 import { getProducts } from '@/lib/data/products';
+import { getCustomers, getCustomerById } from '@/lib/data/customers';
 import { saveQuote } from '@/lib/data/quotes';
 import { createQuote, checkEligibility, advanceStatus } from '@/lib/quote-engine';
 import { calculateCost } from '@/lib/pricing-engine';
@@ -14,21 +15,20 @@ import { Card } from '@/components/ui/Card';
 import TouTimeline from '@/components/pricing/TouTimeline';
 import { formatCurrency, formatRate, formatStandingCharge, describeRule } from '@/lib/utils';
 import { Customer, CustomerType, EligibilityRule, MeterType, Product, UsageProfile } from '@/lib/types';
+import { getMarkets } from '@/lib/data/markets';
 
 type Step = 1 | 2 | 3;
 
 const CUSTOMER_TYPES: CustomerType[] = ['residential', 'sme', 'ic'];
-const MARKETS = ['GB', 'IE'];
 const METER_TYPES: { value: MeterType; label: string }[] = [
   { value: 'traditional', label: 'Traditional' },
-  { value: 'smart',       label: 'Smart' },
+  { value: 'smart',       label: 'Smart / AMR' },
   { value: 'prepayment',  label: 'Prepayment' },
-  { value: 'hh',          label: 'Half-Hourly (HH)' },
 ];
 const DEFAULT_METER_TYPE: Record<CustomerType, MeterType> = {
   residential: 'traditional',
   sme: 'smart',
-  ic: 'hh',
+  ic: 'smart',
 };
 
 const DEVICE_OPTIONS = [
@@ -216,9 +216,17 @@ function AIRecommendationsPanel({
 
 export default function NewQuotePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [step, setStep] = useState<Step>(1);
 
-  // Step 1 state
+  // Customer selection mode: 'existing' picks from the customer list, 'prospect' is free-text
+  const [customerMode, setCustomerMode] = useState<'existing' | 'prospect'>('existing');
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
+
+  const allCustomers = getCustomers();
+  const marketCodes = getMarkets().map((m) => m.code);
+
+  // Step 1 state — populated from selected customer or entered manually
   const [customerName, setCustomerName] = useState('');
   const [customerType, setCustomerType] = useState<CustomerType>('residential');
   const [meterType, setMeterType] = useState<MeterType>('traditional');
@@ -246,14 +254,48 @@ export default function NewQuotePage() {
     const d = new Date(); d.setDate(d.getDate() + 30); return d.toISOString().split('T')[0];
   });
 
+  // Pre-select customer from ?customerId= query param
+  useEffect(() => {
+    const paramId = searchParams.get('customerId');
+    if (paramId) {
+      const found = getCustomerById(paramId);
+      if (found) populateFromCustomer(found, paramId);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function populateFromCustomer(c: NonNullable<ReturnType<typeof getCustomerById>>, id: string) {
+    setCustomerMode('existing');
+    setSelectedCustomerId(id);
+    setCustomerName(c.name);
+    setCustomerType(c.customerType);
+    setMeterType(c.meterType);
+    setAnnualUsage(c.annualUsageKwh);
+    setMarket(c.market);
+    setHasEV(c.hasEV ?? false);
+    setHasSolar(c.hasSolar ?? false);
+    setHasBattery(c.hasBattery ?? false);
+    setHasHeatPump(c.hasHeatPump ?? false);
+    setSelectedProductIds([]);
+  }
+
+  function handleCustomerSelect(id: string) {
+    if (!id) { setSelectedCustomerId(''); return; }
+    const c = getCustomerById(id);
+    if (c) populateFromCustomer(c, id);
+  }
+
   const isSmart = meterType === 'smart';
   const usageProfile: UsageProfile | undefined = isSmart
     ? { peakPercent: peakPct, offPeakPercent: offPeakPct, nightPercent: nightPct }
     : undefined;
 
   const now = new Date().toISOString();
+  const customerId = customerMode === 'existing' && selectedCustomerId
+    ? selectedCustomerId
+    : `cust-prospect-${Date.now()}`;
   const customer: Customer = {
-    id: `cust-new-${Date.now()}`, accountRef: '', name: customerName, customerType, status: 'active',
+    id: customerId, accountRef: '', name: customerName, customerType, status: 'active',
     supplyAddress: { line1: '', city: '', postcode: '', countryCode: market },
     billingAddress: { line1: '', city: '', postcode: '', countryCode: market },
     meterType, currentProducts: [], annualUsageKwh: annualUsage, market,
@@ -297,7 +339,8 @@ export default function NewQuotePage() {
     router.push(`/quotes/${saveQuote(issued).id}`);
   }
 
-  const step1Valid = customerName.trim().length > 0 && annualUsage > 0 && (!isSmart || profileValid);
+  const customerIdentified = customerMode === 'existing' ? !!selectedCustomerId : customerName.trim().length > 0;
+  const step1Valid = customerIdentified && annualUsage > 0 && (!isSmart || profileValid);
   const step2Valid = selectedProductIds.length > 0;
 
   // Net cost summary for mixed import + export selections
@@ -335,31 +378,71 @@ export default function NewQuotePage() {
         <Card>
           <h3 className="mb-4 text-sm font-semibold" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>Customer Details</h3>
           <div className="space-y-4">
-            <div>
-              <label className="field-label">Customer Name *</label>
-              <input className="field-input" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="e.g. Acme Corp Ltd" />
+
+            {/* Mode toggle */}
+            <div className="flex gap-2">
+              {(['existing', 'prospect'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => { setCustomerMode(mode); setSelectedCustomerId(''); setCustomerName(''); }}
+                  style={toggleBtn(customerMode === mode)}
+                >
+                  {mode === 'existing' ? 'Existing customer' : 'New prospect'}
+                </button>
+              ))}
             </div>
+
+            {/* Existing customer picker */}
+            {customerMode === 'existing' && (
+              <div>
+                <label className="field-label">Select customer *</label>
+                <select
+                  className="field-input"
+                  value={selectedCustomerId}
+                  onChange={(e) => handleCustomerSelect(e.target.value)}
+                >
+                  <option value="">— choose a customer —</option>
+                  {allCustomers.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name} ({c.accountRef})</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Prospect: free-text name */}
+            {customerMode === 'prospect' && (
+              <div>
+                <label className="field-label">Customer Name *</label>
+                <input className="field-input" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="e.g. Acme Corp Ltd" />
+              </div>
+            )}
+
+            {/* Fields — shown once a customer is identified */}
+            {(customerMode === 'prospect' || selectedCustomerId) && (
+              <>
             <div>
-              <label className="field-label">Customer Type *</label>
+              <label className="field-label">Customer Type</label>
               <div className="flex gap-2">
                 {CUSTOMER_TYPES.map((t) => (
-                  <button key={t} onClick={() => { setCustomerType(t); setMeterType(DEFAULT_METER_TYPE[t]); }} style={toggleBtn(customerType === t)} className="capitalize">{t}</button>
+                  <button key={t} disabled={customerMode === 'existing'} onClick={() => { setCustomerType(t); setMeterType(DEFAULT_METER_TYPE[t]); }} style={{ ...toggleBtn(customerType === t), opacity: customerMode === 'existing' ? 0.6 : 1, cursor: customerMode === 'existing' ? 'default' : 'pointer' }} className="capitalize">{t}</button>
                 ))}
               </div>
             </div>
             <div>
-              <label className="field-label">Meter Type *</label>
+              <label className="field-label">Meter Type</label>
               <div className="flex flex-wrap gap-2">
                 {METER_TYPES.map(({ value, label }) => (
-                  <button key={value} onClick={() => setMeterType(value)} style={toggleBtn(meterType === value)}>{label}</button>
+                  <button key={value} disabled={customerMode === 'existing'} onClick={() => setMeterType(value)} style={{ ...toggleBtn(meterType === value), opacity: customerMode === 'existing' ? 0.6 : 1, cursor: customerMode === 'existing' ? 'default' : 'pointer' }}>{label}</button>
                 ))}
               </div>
             </div>
             <div>
-              <label className="field-label">Annual Usage Estimate (kWh) *</label>
-              <input type="number" min={1} className="field-input" value={annualUsage} onChange={(e) => setAnnualUsage(Number(e.target.value))} />
+              <label className="field-label">Annual Usage Estimate (kWh)</label>
+              <input type="number" min={1} className="field-input" value={annualUsage} onChange={(e) => setAnnualUsage(Number(e.target.value))} readOnly={customerMode === 'existing'} style={{ opacity: customerMode === 'existing' ? 0.7 : 1 }} />
               <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>Typical residential ~3,500 kWh/yr · SME ~10,000–50,000 kWh/yr</p>
             </div>
+              </>
+            )}
 
             {/* Usage profile — smart meter only */}
             {isSmart && (
@@ -370,10 +453,10 @@ export default function NewQuotePage() {
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                   {[
-                    { label: 'Peak %', value: peakPct, setter: setPeakPct },
-                    { label: 'Off-Peak %', value: offPeakPct, setter: setOffPeakPct },
-                    { label: 'Night %', value: nightPct, setter: setNightPct },
-                  ].map(({ label, value, setter }) => (
+                    { label: 'Peak %',     hint: '16:00–19:00 weekdays',          value: peakPct,     setter: setPeakPct },
+                    { label: 'Off-Peak %', hint: '07:00–16:00 & 19:00–23:00',     value: offPeakPct,  setter: setOffPeakPct },
+                    { label: 'Night %',    hint: '23:00–07:00',                   value: nightPct,    setter: setNightPct },
+                  ].map(({ label, hint, value, setter }) => (
                     <div key={label}>
                       <label className="field-label">{label}</label>
                       <input
@@ -381,6 +464,7 @@ export default function NewQuotePage() {
                         value={value}
                         onChange={(e) => setter(Math.max(0, Math.min(100, Number(e.target.value))))}
                       />
+                      <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>{hint}</p>
                     </div>
                   ))}
                 </div>
@@ -393,7 +477,7 @@ export default function NewQuotePage() {
                   <p className="text-xs" style={{ color: 'var(--color-success-text)' }}>✓ Profile sums to 100%</p>
                 )}
                 <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                  Defaults reflect a typical residential profile. Smart meter half-hourly data would populate this automatically in production.
+                  Time windows are indicative and based on typical TOU rate bands. In production, these splits would be derived automatically from smart meter half-hourly reads.
                 </p>
               </div>
             )}
@@ -441,17 +525,19 @@ export default function NewQuotePage() {
               </div>
             )}
 
-            <div>
-              <label className="field-label">Market *</label>
-              <div className="flex gap-2">
-                {MARKETS.map((m) => (
-                  <button key={m} onClick={() => { setMarket(m); setSelectedProductIds([]); }} style={toggleBtn(market === m)}>{m}</button>
-                ))}
+            {(customerMode === 'prospect' || selectedCustomerId) && (
+              <div>
+                <label className="field-label">Market</label>
+                <div className="flex gap-2">
+                  {marketCodes.map((m) => (
+                    <button key={m} disabled={customerMode === 'existing'} onClick={() => { setMarket(m); setSelectedProductIds([]); }} style={{ ...toggleBtn(market === m), opacity: customerMode === 'existing' ? 0.6 : 1, cursor: customerMode === 'existing' ? 'default' : 'pointer' }}>{m}</button>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                  Products, pricing, and regulatory rules are scoped to the selected market. Adding a new market requires market configuration only — no changes to the pricing or quoting engine.
+                </p>
               </div>
-              <p className="mt-1.5 text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                Products, pricing, and regulatory rules are scoped to the selected market. Adding a new market requires market configuration only — no changes to the pricing or quoting engine.
-              </p>
-            </div>
+            )}
           </div>
           <div className="mt-5 flex justify-end">
             <Button size="sm" disabled={!step1Valid} onClick={() => setStep(2)}>Next: Products <ArrowRight size={14} /></Button>
