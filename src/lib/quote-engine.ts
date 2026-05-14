@@ -104,6 +104,7 @@ export function createQuote(
       productId: product.id,
       productName: product.name,
       pricingSnapshot: product.pricingStructure,
+      usageProfile,
       estimatedAnnualCost: parseFloat(breakdown.subtotal.toFixed(2)),
     };
   });

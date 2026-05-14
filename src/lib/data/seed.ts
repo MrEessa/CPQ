@@ -389,11 +389,11 @@ export const SEED_PRODUCTS: Product[] = [
       standingCharge: 45.00,
       rates: [
         {
-          id: 'rate-007-1',
-          label: 'Super Off-Peak',
-          unitRate: 8.0,
+          id: 'rate-007-3',
+          label: 'Peak',
+          unitRate: 38.0,
           timeWindows: [
-            { daysOfWeek: [0, 1, 2, 3, 4, 5, 6], startTime: '00:00', endTime: '07:00' },
+            { daysOfWeek: [0, 1, 2, 3, 4, 5, 6], startTime: '16:00', endTime: '19:00' },
           ],
         },
         {
@@ -406,11 +406,11 @@ export const SEED_PRODUCTS: Product[] = [
           ],
         },
         {
-          id: 'rate-007-3',
-          label: 'Peak',
-          unitRate: 38.0,
+          id: 'rate-007-1',
+          label: 'Super Off-Peak',
+          unitRate: 8.0,
           timeWindows: [
-            { daysOfWeek: [0, 1, 2, 3, 4, 5, 6], startTime: '16:00', endTime: '19:00' },
+            { daysOfWeek: [0, 1, 2, 3, 4, 5, 6], startTime: '00:00', endTime: '07:00' },
           ],
         },
       ],

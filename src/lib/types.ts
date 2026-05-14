@@ -116,6 +116,7 @@ export interface QuoteLineItem {
   productId: string;
   productName: string;
   pricingSnapshot: PricingStructure;
+  usageProfile?: UsageProfile;
   estimatedAnnualCost: number;
 }
 
