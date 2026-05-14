@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, ArrowRight, CheckCircle, XCircle, Zap, Car, Sun, Battery, Thermometer, Sparkles, TrendingDown, DollarSign } from 'lucide-react';
 import { getProducts } from '@/lib/data/products';
@@ -214,7 +214,7 @@ function AIRecommendationsPanel({
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
-export default function NewQuotePage() {
+function NewQuotePageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [step, setStep] = useState<Step>(1);
@@ -905,5 +905,13 @@ export default function NewQuotePage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function NewQuotePage() {
+  return (
+    <Suspense>
+      <NewQuotePageInner />
+    </Suspense>
   );
 }
