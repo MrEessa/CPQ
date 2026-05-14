@@ -174,7 +174,7 @@ export default function Sidebar() {
           className="text-xs"
           style={{ color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)' }}
         >
-          Eessa's Retail Demo v1.0
+          Eessa&apos;s Retail Demo v1.0
         </p>
       </div>
     </aside>
