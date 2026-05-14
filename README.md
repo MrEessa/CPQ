@@ -6,7 +6,7 @@ I built this to show how product and technical thinking combine in an energy Saa
 
 Next.js 14, TypeScript, Tailwind CSS. In-memory data - no database needed.
 
-> **Note on AI features:** The AI-labelled features - AI-Assisted Match, AI Rate Health Advisor, AI Catalogue Analysis - are deterministic rule-based logic, not real ML models. They show what these capabilities would look like as product surfaces: how recommendations get presented, what signals drive them, and how they connect to downstream actions (selecting a product, editing a rate, creating a catalogue entry). In a production system, the same surfaces would connect to trained models, live wholesale feeds, and half-hourly consumption data. The design intent is the same; the inference engine behind it would differ.
+> **Note on AI features:** The AI-labelled features - AI-Assisted Match, AI Rate Health Advisor, AI Catalogue Analysis - are deterministic rule-based logic, not real ML models. They show what these capabilities would look like as product surfaces: how recommendations get presented, what signals drive them, and how they connect to downstream actions (selecting a product, editing a rate, creating a catalogue entry). In a production system, the same surfaces would connect to trained models, live wholesale feeds, and half-hourly consumption data. The design intent is the same; the inference engine behind it would differ. 
 
 ---
 
@@ -25,6 +25,7 @@ Open [http://localhost:3000](http://localhost:3000) or access via [https://cpq-s
 
 Navigation is grouped by operational domain. All sections are reachable from the left sidebar.
 
+
 | Module                | Path          | Purpose                                                    |
 | --------------------- | ------------- | ---------------------------------------------------------- |
 | Dashboard             | `/`           | KPI cards, activity feed, billing and switch charts        |
@@ -37,6 +38,7 @@ Navigation is grouped by operational domain. All sections are reachable from the
 | Analytics             | `/analytics`  | Portfolio, billing, behaviour, tariff performance, quoting |
 | Financial Control     | `/finance`    | Ledger, gross margin, revenue assurance, audit log         |
 | Market Communications | `/market`     | Industry messages, switches, meter reads, compliance queue |
+
 
 ---
 
@@ -188,3 +190,4 @@ src/
     useCatalogue.ts
     useQuote.ts
 ```
+
