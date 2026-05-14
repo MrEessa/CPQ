@@ -247,6 +247,9 @@ function NewQuotePageInner() {
   const [hasHeatPump, setHasHeatPump] = useState(false);
   const [annualExportKwh, setAnnualExportKwh] = useState(1200);
 
+  // Optional gas usage — only relevant for dual-fuel / bundled products
+  const [annualGasUsage, setAnnualGasUsage] = useState<number | undefined>(undefined);
+
   // Step 2 / 3 state
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
@@ -328,13 +331,13 @@ function NewQuotePageInner() {
   const exportKwh = hasSolar ? annualExportKwh : undefined;
 
   function handleSaveDraft() {
-    const quote = createQuote(customer, selectedProducts, annualUsage, usageProfile, exportKwh);
+    const quote = createQuote(customer, selectedProducts, annualUsage, usageProfile, exportKwh, annualGasUsage);
     const saved = saveQuote({ ...quote, notes, validUntil });
     router.push(`/quotes/${saved.id}`);
   }
 
   function handleIssue() {
-    const quote = createQuote(customer, selectedProducts, annualUsage, usageProfile, exportKwh);
+    const quote = createQuote(customer, selectedProducts, annualUsage, usageProfile, exportKwh, annualGasUsage);
     const issued = advanceStatus({ ...quote, notes, validUntil }, 'issued');
     router.push(`/quotes/${saveQuote(issued).id}`);
   }
@@ -348,10 +351,10 @@ function NewQuotePageInner() {
     const importProducts = selectedProducts.filter((p) => p.productType !== 'export');
     const exportProducts = selectedProducts.filter((p) => p.productType === 'export');
     const importCost = importProducts.reduce(
-      (sum, p) => sum + calculateCost({ product: p, annualUsageKwh: annualUsage, annualExportKwh: exportKwh, usageProfile }).subtotal, 0,
+      (sum, p) => sum + calculateCost({ product: p, annualUsageKwh: annualUsage, annualExportKwh: exportKwh, annualGasUsageKwh: annualGasUsage, usageProfile }).subtotal, 0,
     );
     const exportIncome = exportProducts.reduce(
-      (sum, p) => sum + calculateCost({ product: p, annualUsageKwh: annualUsage, annualExportKwh: exportKwh, usageProfile }).subtotal, 0,
+      (sum, p) => sum + calculateCost({ product: p, annualUsageKwh: annualUsage, annualExportKwh: exportKwh, annualGasUsageKwh: annualGasUsage, usageProfile }).subtotal, 0,
     );
     const currency = importProducts[0] ? currencyForProduct(importProducts[0]) : 'GBP';
     return { importCost, exportIncome, net: importCost - exportIncome, hasExport: exportProducts.length > 0, currency };
@@ -437,10 +440,22 @@ function NewQuotePageInner() {
               </div>
             </div>
             <div>
-              <label className="field-label">Annual Usage Estimate (kWh)</label>
+              <label className="field-label">Annual Electricity Usage (kWh)</label>
               <input type="number" min={1} className="field-input" value={annualUsage} onChange={(e) => setAnnualUsage(Number(e.target.value))} readOnly={customerMode === 'existing'} style={{ opacity: customerMode === 'existing' ? 0.7 : 1 }} />
               <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>Typical residential ~3,500 kWh/yr · SME ~10,000–50,000 kWh/yr</p>
             </div>
+            {activeProducts.some((p) => p.fuelType === 'dual_fuel' || p.productType === 'bundled') && (
+              <div>
+                <label className="field-label">Annual Gas Usage (kWh) <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>— optional, required for dual-fuel quotes</span></label>
+                <input
+                  type="number" min={0} className="field-input"
+                  placeholder="e.g. 11500"
+                  value={annualGasUsage ?? ''}
+                  onChange={(e) => setAnnualGasUsage(e.target.value === '' ? undefined : Math.max(0, Number(e.target.value)))}
+                />
+                <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>Typical residential ~11,500 kWh/yr. Leave blank for electricity-only quotes.</p>
+              </div>
+            )}
               </>
             )}
 
@@ -569,7 +584,7 @@ function NewQuotePageInner() {
           {activeProducts.map((product) => {
             const eligibility = checkEligibility(product, customer);
             const selected = selectedProductIds.includes(product.id);
-            const breakdown = selected ? calculateCost({ product, annualUsageKwh: annualUsage, annualExportKwh: exportKwh, usageProfile }) : null;
+            const breakdown = selected ? calculateCost({ product, annualUsageKwh: annualUsage, annualExportKwh: exportKwh, annualGasUsageKwh: annualGasUsage, usageProfile }) : null;
             const isTOU = product.productType === 'time_of_use' || product.productType === 'dynamic';
             const isExport = product.productType === 'export';
             const isBundle = product.productType === 'bundled';
@@ -764,7 +779,14 @@ function NewQuotePageInner() {
           <Card>
             <h3 className="mb-3 text-sm font-semibold" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>Customer</h3>
             <div className="grid grid-cols-3 gap-2 text-sm">
-              {[['Name', customerName], ['Type', customerType], ['Annual Usage', `${annualUsage.toLocaleString()} kWh`], ['Market', market], ['Meter', meterType]].map(([label, val]) => (
+              {[
+              ['Name', customerName],
+              ['Type', customerType],
+              ['Annual Elec Usage', `${annualUsage.toLocaleString()} kWh`],
+              ...(annualGasUsage !== undefined ? [['Annual Gas Usage', `${annualGasUsage.toLocaleString()} kWh`]] : []),
+              ['Market', market],
+              ['Meter', meterType],
+            ].map(([label, val]) => (
                 <div key={label}>
                   <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{label}</p>
                   <p className="font-medium capitalize" style={{ color: 'var(--text-primary)' }}>{val}</p>
@@ -779,7 +801,7 @@ function NewQuotePageInner() {
           </Card>
 
           {selectedProducts.map((product) => {
-            const bd = calculateCost({ product, annualUsageKwh: annualUsage, annualExportKwh: exportKwh, usageProfile });
+            const bd = calculateCost({ product, annualUsageKwh: annualUsage, annualExportKwh: exportKwh, annualGasUsageKwh: annualGasUsage, usageProfile });
             const currency = currencyForProduct(product);
             const isExport = product.productType === 'export';
             const isBundle = product.productType === 'bundled';

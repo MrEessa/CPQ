@@ -25,6 +25,7 @@ export interface PricingRate {
   id: string;
   label: string;
   unitRate: number; // p/kWh
+  fuelType?: 'electricity' | 'gas'; // only set on rates within bundled products
   timeWindows?: TimeWindow[];
   tier?: TierRule;
 }
@@ -117,6 +118,7 @@ export interface QuoteLineItem {
   productName: string;
   pricingSnapshot: PricingStructure;
   usageProfile?: UsageProfile;
+  annualGasUsageKwh?: number;
   estimatedAnnualCost: number;
 }
 
@@ -137,6 +139,7 @@ export interface Quote {
   products: QuoteLineItem[];
   annualUsageKwh: number;
   annualExportKwh?: number;       // only set when quote includes an export tariff
+  annualGasUsageKwh?: number;     // only set when quote includes a dual-fuel / bundled product
   estimatedAnnualCost: number;
   totalWithVat: number;
   notes?: string;
@@ -159,6 +162,7 @@ export interface PricingInput {
   product: Product;
   annualUsageKwh: number;
   annualExportKwh?: number;   // overrides annualUsageKwh for export-type products
+  annualGasUsageKwh?: number; // used for gas rate lines within bundled products
   usageProfile?: UsageProfile;
 }
 

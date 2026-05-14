@@ -95,16 +95,18 @@ export function createQuote(
   usageKwh: number,
   usageProfile?: UsageProfile,
   annualExportKwh?: number,
+  annualGasUsageKwh?: number,
 ): Quote {
   const now = new Date().toISOString();
 
   const lineItems: QuoteLineItem[] = products.map((product) => {
-    const breakdown = calculateCost({ product, annualUsageKwh: usageKwh, annualExportKwh, usageProfile });
+    const breakdown = calculateCost({ product, annualUsageKwh: usageKwh, annualExportKwh, annualGasUsageKwh, usageProfile });
     return {
       productId: product.id,
       productName: product.name,
       pricingSnapshot: product.pricingStructure,
       usageProfile,
+      ...(annualGasUsageKwh !== undefined ? { annualGasUsageKwh } : {}),
       estimatedAnnualCost: parseFloat(breakdown.subtotal.toFixed(2)),
     };
   });
@@ -130,6 +132,7 @@ export function createQuote(
     products: lineItems,
     annualUsageKwh: usageKwh,
     ...(annualExportKwh !== undefined ? { annualExportKwh } : {}),
+    ...(annualGasUsageKwh !== undefined ? { annualGasUsageKwh } : {}),
     estimatedAnnualCost,
     totalWithVat,
     validUntil: validUntilDefault(),

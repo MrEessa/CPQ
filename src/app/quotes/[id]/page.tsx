@@ -130,7 +130,7 @@ export default function QuoteDetailPage({ params }: Props) {
             ? quote.annualExportKwh
             : quote.annualUsageKwh;
         // Always calculate from the snapshot taken at quote time, not live product pricing
-        const bd = calculateCostFromSnapshot(item.pricingSnapshot, usageForItem, item.usageProfile);
+        const bd = calculateCostFromSnapshot(item.pricingSnapshot, usageForItem, item.usageProfile, item.annualGasUsageKwh);
         return (
           <Card key={item.productId}>
             <CardHeader>
